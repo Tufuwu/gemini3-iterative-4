@@ -1,5 +1,8 @@
-/.idea
-/node_modules
-/out
-
-/.grunt
+.DS_Store
+node_modules
+*.log
+coverage
+.nyc_output
+package-lock.json
+example/typescript/*.js
+example/typescript/*.d.ts

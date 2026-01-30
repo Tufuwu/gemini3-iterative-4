@@ -1,110 +1,379 @@
-# definitelytyped.github.io [![Build Status](https://travis-ci.org/DefinitelyTyped/definitelytyped.github.io.svg?branch=source)](https://travis-ci.org/DefinitelyTyped/definitelytyped.github.io)
+# express-joi-validation
 
-> Website content for [definitelytyped.org](http://definitelytyped.org).
+![TravisCI](https://travis-ci.org/evanshortiss/express-joi-validation.svg)
+[![Coverage Status](https://coveralls.io/repos/github/evanshortiss/express-joi-validation/badge.svg?branch=master)](https://coveralls.io/github/evanshortiss/express-joi-validation?branch=master)
+[![npm version](https://badge.fury.io/js/express-joi-validation.svg)](https://www.npmjs.com/package/express-joi-validation)
+[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](http://www.typescriptlang.org/)
+[![npm downloads](https://img.shields.io/npm/dm/express-joi-validation.svg?style=flat)](https://www.npmjs.com/package/express-joi-validation)
+[![Known Vulnerabilities](https://snyk.io//test/github/evanshortiss/express-joi-validation/badge.svg?targetFile=package.json)](https://snyk.io//test/github/evanshortiss/express-joi-validation?targetFile=package.json)
 
-The [master](https://github.com/DefinitelyTyped/definitelytyped.github.io/tree/master) branch holds live github.io content generated from the [source](https://github.com/DefinitelyTyped/definitelytyped.github.io/tree/source) branch.
+A middleware for validating express inputs using Joi schemas. Features include:
 
-The site build with [Grunt](http://www.gruntjs.com) and generated using [docpad](http://docpad.org), a static site generator complete with watch tasks, development server with LiveReload and [many plugins](http://docpad.org/docs/plugins). Publishing happens using [grunt-gh-pages](https://github.com/tschaub/grunt-gh-pages).
+* TypeScript support.
+* Specify the order in which request inputs are validated.
+* Replaces the incoming `req.body`, `req.query`, etc and with the validated result 
+* Retains the original `req.body` inside a new property named `req.originalBody`.
+. The same applies for headers, query, and params using the `original` prefix,
+e.g `req.originalQuery`
+* Chooses sensible default Joi options for headers, params, query, and body.
+* Uses `peerDependencies` to get a Joi instance of your choosing instead of
+using a fixed version.
+
+## Quick Links
+
+* [API](#api)
+* [Usage (JavaScript)](#usage-javascript)
+* [Usage (TypeScript)](#usage-typescript)
+* [Behaviours](#behaviours)
+  * [Joi Versioning](#joi-versioning)
+  * [Validation Ordering](#validation-ordering)
+  * [Error Handling](#error-handling)
+  * [Joi Options](#joi-options)
+  * [Custom Express Error Handler](#custom-express-error-handler)
+
+## Install
+
+You need to install `joi` with this module since it relies on it in
+`peerDependencies`.
+
+```
+npm i express-joi-validation joi --save
+```
+
+## Example
+A JavaScript and TypeScript example can be found in the `example/` folder of
+this repository.
+
+## Usage (JavaScript)
+
+```js
+const Joi = require('joi')
+const app = require('express')()
+const validator = require('express-joi-validation').createValidator({})
+
+const querySchema = Joi.object({
+  name: Joi.string().required()
+})
+
+app.get('/orders', validator.query(querySchema), (req, res) => {
+  // If we're in here then the query was valid!  
+  res.end(`Hello ${req.query.name}!`)
+})
+```
+
+## Usage (TypeScript)
+
+For TypeScript a helper `ValidatedRequest` and
+`ValidatedRequestWithRawInputsAndFields` type is provided. This extends the
+`express.Request` type and allows you to pass a schema using generics to
+ensure type safety in your handler function.
+
+```ts
+import * as Joi from 'joi'
+import * as express from 'express'
+import {
+  ContainerTypes,
+  // Use this as a replacement for express.Request
+  ValidatedRequest,
+  // Extend from this to define a valid schema type/interface
+  ValidatedRequestSchema,
+  // Creates a validator that generates middlewares
+  createValidator
+} from 'express-joi-validation'
+
+const app = express()
+const validator = createValidator()
+
+const querySchema = Joi.object({
+  name: Joi.string().required()
+})
+
+interface HelloRequestSchema extends ValidatedRequestSchema {
+  [ContainerTypes.Query]: {
+    name: string
+  }
+}
+
+app.get(
+  '/hello',
+  validator.query(querySchema),
+  (req: ValidatedRequest<HelloRequestSchema>, res) => {
+    // Woohoo, type safety and intellisense for req.query!
+    res.end(`Hello ${req.query.name}!`)
+  }
+)
+```
+
+You can minimise some duplication by using [joi-extract-type](https://github.com/TCMiranda/joi-extract-type/).
+
+_NOTE: this does not work with Joi v16+ at the moment. See [this issue](https://github.com/TCMiranda/joi-extract-type/issues/23)._
+
+```ts
+import * as Joi from 'joi'
+import * as express from 'express'
+import {
+  // Use this as a replacement for express.Request
+  ValidatedRequest,
+  // Extend from this to define a valid schema type/interface
+  ValidatedRequestSchema,
+  // Creates a validator that generates middlewares
+  createValidator
+} from 'express-joi-validation'
+
+// This is optional, but without it you need to manually generate
+// a type or interface for ValidatedRequestSchema members
+import 'joi-extract-type'
+
+const app = express()
+const validator = createValidator()
+
+const querySchema = Joi.object({
+  name: Joi.string().required()
+})
+
+interface HelloRequestSchema extends ValidatedRequestSchema {
+  [ContainerTypes.Query]: Joi.extractType<typeof querySchema>
+
+  // Without Joi.extractType you would do this:
+  // query: {
+  //   name: string
+  // }
+}
+
+app.get(
+  '/hello',
+  validator.query(querySchema),
+  (req: ValidatedRequest<HelloRequestSchema>, res) => {
+    // Woohoo, type safety and intellisense for req.query!
+    res.end(`Hello ${req.query.name}!`)
+  }
+)
+```
+
+## API
+
+### Structure
+
+* module (express-joi-validation)
+  * [createValidator(config)](#createvalidatorconfig)
+    * [query(options)](#validatorqueryschema-options)
+    * [body(options)](#validatorbodyschema-options)
+    * [headers(options)](#validatorheadersschema-options)
+    * [params(options)](#validatorparamsschema-options)
+    * [response(options)](#validatorresponseschema-options)
+    * [fields(options)](#validatorfieldsschema-options)
+
+### createValidator(config)
+Creates a validator. Supports the following options:
+
+* passError (default: `false`) - Passes validation errors to the express error
+hander using `next(err)` when `true`
+* statusCode (default: `400`) - The status code used when validation fails and
+`passError` is `false`.
+
+#### validator.query(schema, [options])
+Creates a middleware instance that will validate the `req.query` for an
+incoming request. Can be passed `options` that override the config passed
+when the validator was created.
+
+Supported options are:
+
+* joi - Custom options to pass to `Joi.validate`.
+* passError - Same as above.
+* statusCode - Same as above.
+
+#### validator.body(schema, [options])
+Creates a middleware instance that will validate the `req.body` for an incoming
+request. Can be passed `options` that override the options passed when the
+validator was created.
+
+Supported options are the same as `validator.query`.
+
+#### validator.headers(schema, [options])
+Creates a middleware instance that will validate the `req.headers` for an
+incoming request. Can be passed `options` that override the options passed
+when the validator was created.
+
+Supported options are the same as `validator.query`.
+
+#### validator.params(schema, [options])
+Creates a middleware instance that will validate the `req.params` for an
+incoming request. Can be passed `options` that override the options passed
+when the validator was created.
+
+Supported options are the same as `validator.query`.
+
+#### validator.response(schema, [options])
+Creates a middleware instance that will validate the outgoing response.
+Can be passed `options` that override the options passed when the instance was
+created.
+
+Supported options are the same as `validator.query`.
+
+#### validator.fields(schema, [options])
+Creates a middleware instance that will validate the fields for an incoming
+request. This is designed for use with `express-formidable`. Can be passed
+`options` that override the options passed when the validator was created.
+
+The `instance.params` middleware is a little different to the others. It _must_
+be attached directly to the route it is related to. Here's a sample:
+
+```js
+const schema = Joi.object({
+  id: Joi.number().integer().required()
+});
+
+// INCORRECT
+app.use(validator.params(schema));
+app.get('/orders/:id', (req, res, next) => {
+  // The "id" parameter will NOT have been validated here!
+});
+
+// CORRECT
+app.get('/orders/:id', validator.params(schema), (req, res, next) => {
+  // This WILL have a validated "id"
+})
+```
+
+Supported options are the same as `validator.query`.
+
+## Behaviours
+
+### Joi Versioning
+This module uses `peerDependencies` for the Joi version being used.
+This means whatever `joi` version is in the `dependencies` of your
+`package.json` will be used by this module.
 
 
-## Edit online
+### Validation Ordering
+Validation can be performed in a specific order using standard express
+middleware behaviour. Pass the middleware in the desired order.
 
-1. Use the github web interface to quickly make text edits like updating the [guides](/guides.html) and the [directory](/directory.html). Github will create a fork and you can modify content without leaving your browser.
+Here's an example where the order is headers, body, query:
 
-1. The content is saved as markdown and located in `./src/documents`.
+```js
+route.get(
+  '/tickets',
+  validator.headers(headerSchema),
+  validator.body(bodySchema),
+  validator.query(querySchema),
+  routeHandler
+);
+```
 
+### Error Handling
+When validation fails, this module will default to returning a HTTP 400 with
+the Joi validation error as a `text/plain` response type.
 
-## Bulk editing
+A `passError` option is supported to override this behaviour. This option
+forces the middleware to pass the error to the express error handler using the
+standard `next` function behaviour.
 
-If you like to use your own tools you can follow these steps:
+See the [Custom Express Error Handler](#custom-express-error-handler) section
+for an example.
 
-1. Fork the repository.
+### Joi Options
+It is possible to pass specific Joi options to each validator like so:
 
-1. Checkout the `source` branch.
+```js
+route.get(
+  '/tickets',
+  validator.headers(
+    headerSchema,
+    {
+      joi: {convert: true, allowUnknown: true}
+    }
+  ),
+  validator.body(
+    bodySchema,
+    {
+      joi: {convert: true, allowUnknown: false}
+    }
+  )
+  routeHandler
+);
+```
 
-1. If you already have a checkout make sure you pull the latest revision. 
+The following sensible defaults for Joi are applied if none are passed:
 
-1. Locate the content your want to change in `./src/documents`. Most of the editable content is in markdown format (some with a `.eco` template filter).
+#### Query
+* convert: true
+* allowUnknown: false
+* abortEarly: false
 
-1. Make your edits and commit your changes. A flat commit with sensible commit-note is appreciated.
+#### Body
+* convert: true
+* allowUnknown: false
+* abortEarly: false
 
-1. Push to your changes to your fork.
+#### Headers
+* convert: true
+* allowUnknown: true
+* stripUnknown: false
+* abortEarly: false
 
-1. Send a pull request to the `source` branch.
+#### Route Params
+* convert: true
+* allowUnknown: false
+* abortEarly: false
 
-1. After review a committer will merge and Travis-CI will republish the site.
-
-1. See below for the steps to get a local preview (this is not essential for simple markdown edits).
-
-
-## Edit the site
-
-To do structural authoring with a build-preview you can follow the development flow.
-
-Working with the site is done using your commandline terminal and should work on any platform. So it can be bash, shell, cmd.exe or anything else (like WebStorm embedded terminal).
-
-
-### Prerequisites
-
-1. Get [node.js](http://nodejs.org/) (`> 0.10.0`) for your local platform, it comes with the `npm` package manager.
-
-1. Have the global grunt cli command: run `npm install grunt-cli -g` in your command line.
-
-1. You *dont* need a global docpad install; it comes as local dependency.
-
-
-### Get the project
-
-1. Fork the repository (or just clone if you got commit access).
-
-1. Checkout the `source` branch.
-
-1. Run `npm install` to pull all local dependencies. (this can take a minute)
-
-
-### Do some work in the project
-
-Use grunt to run various commands.
-
-1. The main tasks are:
-
-	1. Run `grunt clean` - remove all generated content.
-
-	1. Run `grunt watch` - regenerate and start a watch with LiveReload server at [http://localhost:9778/](http://localhost:9778/)
-
-	1. Run `grunt build` - regenerate the site for production environment (best to stop the watch if you have it active).
-
-	1. Run `grunt publish` - build and push to github `master` (live at [definitelytyped.org](http://definitelytyped.org/)). This will ask for your github credentials so you need commit access to the repository (otherwise send a PR with the your source). Make sure you also push the changes to `source`.
-
-	1. See `grunt -h` or the `Gruntfile.js` for additional commands.
-
-
-### Publish the changes
-
-1. Push your changes to the `source` branch (or send a pull request).
-
-1. If you like some feedback first then use a fork (or branch).
-
-1. The every commit that lands on `source` will automatically be rebuild and deployed via Travis-CI.
-
-1. Give Travis a minute or two to deploy the site, then verify your changes.
-
-1. Optional: Fix some typos.
-
-Notes:
-
-1. If you build or watch the content then you might get some yellow `warning`'s in the console. These can usually be ignored when docpad telling us that some transforms didn't have any effect: this is correct if you use a template transform (`.eco`) but have no template fields in the file (*yet*).
-
-2. :warning: Direct changes to `master` branch will be overwritten or discarded so always edit through `source`!
+#### Fields (with express-formidable)
+* convert: true
+* allowUnknown: false
+* abortEarly: false
 
 
-## Contributions
+## Custom Express Error Handler
 
-Contributions are welcome! Check the website [for more info](http://definitelytyped.org/pages/website-contributions.html), then return here and follow the instructions above.
+```js
+const validator = require('express-joi-validation').createValidator({
+  // This options forces validation to pass any errors the express
+  // error handler instead of generating a 400 error
+  passError: true
+});
 
+const app = require('express')();
+const orders = require('lib/orders');
 
-## License
+app.get('/orders', validator.query(require('./query-schema')), (req, res, next) => {
+  // if we're in here then the query was valid!
+  orders.getForQuery(req.query)
+    .then((listOfOrders) => res.json(listOfOrders))
+    .catch(next);
+});
 
-Copyright (c) 2014 DefinitelyTyped
+// After your routes add a standard express error handler. This will be passed the Joi
+// error, plus an extra "type" field so we can tell what type of validation failed
+app.use((err, req, res, next) => {
+  if (err && err.error && err.error.isJoi) {
+    // we had a joi error, let's return a custom 400 json response
+    res.status(400).json({
+      type: err.type, // will be "query" here, but could be "headers", "body", or "params"
+      message: err.error.toString()
+    });
+  } else {
+    // pass on to another error handler
+    next(err);
+  }
+});
+```
 
-Licensed under the MIT license.
+In TypeScript environments `err.type` can be verified against the exported
+`ContainerTypes`:
+
+```ts
+import { ContainerTypes } from 'express-joi-validation'
+
+app.use((err: any|ExpressJoiError, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // ContainerTypes is an enum exported by this module. It contains strings
+  // such as "body", "headers", "query"...
+  if (err && err.type in ContainerTypes) {
+    const e: ExpressJoiError = err
+    // e.g "you submitted a bad query paramater"
+    res.status(400).end(`You submitted a bad ${e.type} paramater`)
+  } else {
+    res.status(500).end('internal server error')
+  }
+})
+```
+
