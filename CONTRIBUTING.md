@@ -1,32 +1,47 @@
-# Contributing
+# Contributions
 
-Thanks a lot for any contribution!
+Thanks for your interest in the project, you're ![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)!!
 
-To keep code quality high and maintenance work low, please adhere to the
-following guidelines when creating a pull request:
+Any kind of help is very welcome (Code, Bug reports, Content, Data, Documentation, Design, Examples, Ideas, Feedback, etc.),  Issues and/or Pull Requests are welcome for any level of improvement, from a small typo to new features, help us make SDialog better :+1:
 
-- Please follow the [coding
-  guidelines](https://github.com/dbrgn/RPLCD#coding-guidelines).
-- Use meaningful commit messages: Please follow the advice in [this
-  blogpost](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
-  First line of your commit message should be a very short summary (ideally 50
-  characters or less) in the imperative mood. After the first line of the commit
-  message, add a blank line and then a more detailed explanation (when relevant).
+Remember that you can use the "Edit" button ('pencil' icon) up the top to [edit any file of this repo directly on GitHub](https://help.github.com/en/github/managing-files-in-a-repository/editing-files-in-your-repository).
 
-The following items make my life easier, but are optional:
+In case you're planning to create a **new Pull Request**, for committing to this repo, we follow the Chris Beams' "seven rules of a great Git commit message" from ["How to Write a Git Commit Message"](https://chris.beams.io/posts/git-commit/), so make sure your commits follow them as well.
 
-- If you know how to use `git rebase`, please rebase/sqash your commits so that
-  unnecessary noise in the commit history is avoided.
-- If you have have previously filed a GitHub issue and want to contribute code
-  that addresses that issue, I prefer it if you use
-  [hub](https://github.com/github/hub) to convert your existing issue to a pull
-  request. To do that, first push the changes to a separate branch in your fork
-  and then issue the following command:
+## Manually Build Documentation
 
-        hub pull-request -b dbrgn:master -i <issue-number> -h <your-github-username>:<your-branch-name>
+Generate the HTML version of it:
+```bash
+cd docs
+python -m sphinx -T -b html -d _build/doctrees -D language=en . ../docs_html
+```
 
-  This is no strict requirement though, if you don't have hub installed or
-  prefer to use the web interface, then feel free to post a traditional pull
-  request.
+In case we need to re-generate the API Reference:
+```bash
+cd docs/api
+sphinx-apidoc -f --ext-autodoc -o . ../../src/sdialog
+```
 
-Thanks for your contribution!
+Link to our ReadTheDocs [here](https://app.readthedocs.org/projects/sdialog/builds/28462329/).
+
+## PyPI
+
+```bash
+python -m build
+python -m twine upload dist/*
+```
+
+## Tests
+
+Make sure your changes passes the style and unit tests, run the following commands in the root directory:
+
+```bash
+flake8 --ignore=E501,W503
+pytest
+```
+
+Or if you want to check the code coverture:
+```bash
+pytest -v --cov-report=html --cov=src/sdialog
+```
+And check the content of the newlly created `htmlcov` folder (open `index.html`).

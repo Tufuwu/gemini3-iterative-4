@@ -1,76 +1,50 @@
-Welcome to RPLCD's documentation!
-#################################
+Synthetic Dialogue Generation with SDialog
+==========================================
+
+Conversational AI research and applications increasingly rely on high-quality, flexible, and reproducible synthetic dialogues for training, evaluation, and benchmarking. However, generating such dialogues presents several challenges:
+
+- **Standardization:** There is a lack of standard definitions for dialogue, persona, and event structures, making it difficult to compare results across systems or datasets.
+- **Abstraction:** Researchers and developers need abstract interfaces for dialogue generation that support both single-agent and multi-agent scenarios, enabling modular experimentation.
+- **Fine-grained Control:** Realistic dialogue simulation often requires fine-grained orchestration, such as injecting instructions, simulating user behaviors, or enforcing scenario constraints.
+- **LLM Integration:** Leveraging instruction-tuned Large Language Models (LLMs) for dialogue generation requires seamless integration, prompt management, and memory handling.
+- **Scenario and Dataset Management:** Managing complex scenarios, flowcharts, and persona definitions is essential for reproducible research and controlled experimentation.
+
+`SDialog <https://github.com/idiap/sdialog>`__ addresses these needs by providing a comprehensive, extensible framework for synthetic dialogue generation and analysis, supporting:
+
+- **Persona-based role-playing** with LLMs for realistic, diverse conversations.
+- **Multi-agent and orchestrated dialogues** for complex, scenario-driven simulations.
+- **Scenario and dataset integration** for reproducible research and benchmarking.
+- **Flexible serialization and visualization** for downstream tasks and analysis.
+- **Custom orchestration and extensibility** for advanced research and experimentation.
+
+Whether you are building conversational datasets, evaluating dialogue models, or experimenting with new conversational AI techniques, SDialog offers the abstractions and tools you need.
 
 
-About
-=====
+User Guide
+==========
 
-RPLCD is a Python 3 Raspberry PI Character LCD library for the Hitachi HD44780
-controller. It supports both GPIO (parallel) mode as well as boards with an I²C
-port expander (e.g. the PCF8574 or the MCP23008). Furthermore it can use the
-pigpio_ library to control the (remote) LCD.
+.. toctree::
+   :maxdepth: 3
+   :caption: SDialog
 
-This library is inspired by Adafruit Industries' CharLCD_ library as well as by
-Arduino's LiquidCrystal_ library.
+   sdialog/index
 
-For GPIO mode, no external dependencies (except the ``RPi.GPIO`` library, which
-comes preinstalled on Raspbian) are needed to use this library. If you want to
-control LCDs via I²C, then you also need the ``python-smbus`` library. If you
-want to control the LCD with ``pigpio``, you have to install the pigpio_ library.
+.. toctree::
+   :maxdepth: 3
+   :caption: Simple Examples
 
-
-Features
-========
-
-**Already implemented**
-
-- Simple to use API
-- Support for both 4 bit and 8 bit modes
-- Support for parallel (GPIO), I²C and ``pigpio`` connections
-- Support for custom characters
-- Support for backlight control circuits (including PWM dimming when using the
-  ``pigpio`` backend)
-- Support for contrast control (when using the ``pigpio`` backend)
-- Built-in support for ``A00`` and ``A02`` and ``ST0B`` character tables
-- Caching: Only write characters if they changed
-- No external dependencies (except ``RPi.GPIO``, and ``python-smbus`` if you need
-  I²C support)
-
-**Wishlist**
-
-These things may get implemented in the future, depending on my free time and
-motivation:
-
-- MicroPython port
-
-**Supported I²C Port Expanders**
-
-- PCF8574 (used by a lot of I²C LCD adapters on Ali Express)
-- MCP23008 (used in Adafruit I²C LCD backpack)
-- MCP23017
-
-
-Contents
-========
+   examples/index
 
 .. toctree::
    :maxdepth: 2
+   :caption: API Documentation
 
-   installation.rst
-   getting_started.rst
-   usage.rst
-   troubleshooting.rst
-   api.rst
+   api/index
 
+.. toctree::
+   :maxdepth: 2
+   :caption: About
 
-Indices and tables
-##################
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
-.. _charlcd: https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code/tree/master/Adafruit_CharLCD
-.. _liquidcrystal: http://arduino.cc/en/Reference/LiquidCrystal
-.. _pigpio: http://abyz.me.uk/rpi/pigpio/
+   about/changelog
+   about/contributing
+   about/license
