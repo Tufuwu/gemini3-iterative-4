@@ -1,104 +1,110 @@
-# Codemeta Generator
+# definitelytyped.github.io [![Build Status](https://travis-ci.org/DefinitelyTyped/definitelytyped.github.io.svg?branch=source)](https://travis-ci.org/DefinitelyTyped/definitelytyped.github.io)
 
-This repository contains a (client-side) web application to generate
-CodeMeta documents (aka. `codemeta.json`).
+> Website content for [definitelytyped.org](http://definitelytyped.org).
 
-The [CodeMeta initiative](https://github.com/codemeta/codemeta) is a Free and Open Source academic collaboration
-creating a minimal metadata schema for research software and code.
+The [master](https://github.com/DefinitelyTyped/definitelytyped.github.io/tree/master) branch holds live github.io content generated from the [source](https://github.com/DefinitelyTyped/definitelytyped.github.io/tree/source) branch.
 
-The academic community recommands on adding a codemeta.json file in
-the root directory of your repository.
-
-With this linked data metadata file, you can easily declare the authorship,
-include contextual information and link to other research outputs (publications,
-data, etc.).
-
-Also, the `codemeta.json` file in your source code is indexed in the
-Software Heritage (SWH) archive, which will improve findability in searches.
-
-### References
-
-- [SWH guidelines](https://www.softwareheritage.org/save-and-reference-research-software/) for research software.
-
-- [SWH blog post](https://www.softwareheritage.org/2019/05/28/mining-software-metadata-for-80-m-projects-and-even-more/) about metadata indexation.
-- [Dan S. Katz's blog post](https://danielskatzblog.wordpress.com/2017/09/25/software-heritage-and-repository-metadata-a-software-citation-solution/) about including
- metadata in your repository.
-- FORCE11's Software Citation Implementation WG [repository](https://github.com/force11/force11-sciwg)
-- RDA & FORCE11's joint Software Source Code Identification WG
-   [repository](https://github.com/force11/force11-rda-scidwg)
-
-## Specifications
-
-### Use case
-
-1. create a complete codemeta.json file from scratch
-2. aggregate existing information and add complementary information to
-a codemeta.json file
-
-### Functionalities
-
-- helpers while completing the form, for example a reference list of spdx
-  licenses
-- a validation mechanism after submission
-- the possibility to use all the codeMeta terms and schema.org terms
-- accessible from multiple platforms (web browsers or OS)
-- (extra) the possibility to correct the output after validation as part
-  of the creation process
-
-This tool was initially prepared for the [FORCE19 Hackathon](https://github.com/force11/force11-rda-scidwg/tree/master/hackathon/FORCE2019).
+The site build with [Grunt](http://www.gruntjs.com) and generated using [docpad](http://docpad.org), a static site generator complete with watch tasks, development server with LiveReload and [many plugins](http://docpad.org/docs/plugins). Publishing happens using [grunt-gh-pages](https://github.com/tschaub/grunt-gh-pages).
 
 
-## Code contributions.
+## Edit online
 
-This section only applies to developers who want to contribute to the Codemeta Generator.
-If you only want to use it, you can use
-[the hosted version](https://codemeta.github.io/codemeta-generator/) instead.
+1. Use the github web interface to quickly make text edits like updating the [guides](/guides.html) and the [directory](/directory.html). Github will create a fork and you can modify content without leaving your browser.
 
-### Code guidelines
-
-This application is designed to work on popular modern browsers (Firefox,
-Chromium/Google Chrome, Edge, Safari). Check [Caniuse](https://caniuse.com/)
-for availability of features for these browsers.
-
-To keep the architecture simple, we serve javascript files directly to
-browsers, without a compiler or transpiler; and do not use third-party
-dependencies for now.
-
-### Running local changes
-
-To run Codemeta Generator, you just need an HTTP server serving the
-files (nginx, apache2, etc.).
-
-The simplest way is probably to use Python's HTTP server:
-
-```
-git clone https://github.com/codemeta/codemeta-generator
-cd codemeta-generator
-python3 -m http.server
-```
-
-then open [http://localhost:8000/](http://localhost:8000/) in your web browser.
-
-### Automatic testing
-
-In addition to manual testing, we have automated tests to check for bugs
-quickly, using [Cypress](https://www.cypress.io/).
-
-To run them, first install Cypress:
-
-```
-sudo apt install npm  # or the equivalent on your system
-npm install cypress
-$(npm bin)/cypress install
-```
-
-Then, run the tests:
-
-```
-$(npm bin)/cypress run
-```
+1. The content is saved as markdown and located in `./src/documents`.
 
 
-## Contributed by
+## Bulk editing
 
-![Image description](https://annex.softwareheritage.org/public/logo/software-heritage-logo-title-motto.svg)
+If you like to use your own tools you can follow these steps:
+
+1. Fork the repository.
+
+1. Checkout the `source` branch.
+
+1. If you already have a checkout make sure you pull the latest revision. 
+
+1. Locate the content your want to change in `./src/documents`. Most of the editable content is in markdown format (some with a `.eco` template filter).
+
+1. Make your edits and commit your changes. A flat commit with sensible commit-note is appreciated.
+
+1. Push to your changes to your fork.
+
+1. Send a pull request to the `source` branch.
+
+1. After review a committer will merge and Travis-CI will republish the site.
+
+1. See below for the steps to get a local preview (this is not essential for simple markdown edits).
+
+
+## Edit the site
+
+To do structural authoring with a build-preview you can follow the development flow.
+
+Working with the site is done using your commandline terminal and should work on any platform. So it can be bash, shell, cmd.exe or anything else (like WebStorm embedded terminal).
+
+
+### Prerequisites
+
+1. Get [node.js](http://nodejs.org/) (`> 0.10.0`) for your local platform, it comes with the `npm` package manager.
+
+1. Have the global grunt cli command: run `npm install grunt-cli -g` in your command line.
+
+1. You *dont* need a global docpad install; it comes as local dependency.
+
+
+### Get the project
+
+1. Fork the repository (or just clone if you got commit access).
+
+1. Checkout the `source` branch.
+
+1. Run `npm install` to pull all local dependencies. (this can take a minute)
+
+
+### Do some work in the project
+
+Use grunt to run various commands.
+
+1. The main tasks are:
+
+	1. Run `grunt clean` - remove all generated content.
+
+	1. Run `grunt watch` - regenerate and start a watch with LiveReload server at [http://localhost:9778/](http://localhost:9778/)
+
+	1. Run `grunt build` - regenerate the site for production environment (best to stop the watch if you have it active).
+
+	1. Run `grunt publish` - build and push to github `master` (live at [definitelytyped.org](http://definitelytyped.org/)). This will ask for your github credentials so you need commit access to the repository (otherwise send a PR with the your source). Make sure you also push the changes to `source`.
+
+	1. See `grunt -h` or the `Gruntfile.js` for additional commands.
+
+
+### Publish the changes
+
+1. Push your changes to the `source` branch (or send a pull request).
+
+1. If you like some feedback first then use a fork (or branch).
+
+1. The every commit that lands on `source` will automatically be rebuild and deployed via Travis-CI.
+
+1. Give Travis a minute or two to deploy the site, then verify your changes.
+
+1. Optional: Fix some typos.
+
+Notes:
+
+1. If you build or watch the content then you might get some yellow `warning`'s in the console. These can usually be ignored when docpad telling us that some transforms didn't have any effect: this is correct if you use a template transform (`.eco`) but have no template fields in the file (*yet*).
+
+2. :warning: Direct changes to `master` branch will be overwritten or discarded so always edit through `source`!
+
+
+## Contributions
+
+Contributions are welcome! Check the website [for more info](http://definitelytyped.org/pages/website-contributions.html), then return here and follow the instructions above.
+
+
+## License
+
+Copyright (c) 2014 DefinitelyTyped
+
+Licensed under the MIT license.
