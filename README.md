@@ -1,92 +1,127 @@
-[![CI](https://github.com/jneight/django-earthdistance/actions/workflows/ci.yml/badge.svg)](https://github.com/jneight/django-earthdistance/actions/workflows/ci.yml)
+# LyricsGenius: a Python client for the Genius.com API
+[![Build Status](https://travis-ci.org/johnwmillr/LyricsGenius.svg?branch=master)](https://travis-ci.org/johnwmillr/LyricsGenius)
+[![Documentation Status](https://readthedocs.org/projects/lyricsgenius/badge/?version=master)](https://lyricsgenius.readthedocs.io/en/latest/?badge=master)
+[![PyPI version](https://badge.fury.io/py/lyricsgenius.svg)](https://pypi.org/project/lyricsgenius/)
+[![Python version](https://img.shields.io/badge/python-3.x-brightgreen.svg)](https://pypi.org/project/lyricsgenius/)
 
-[![pypi version](https://img.shields.io/pypi/v/django-earthdistance.svg)](https://pypi.python.org/pypi/django-earthdistance)
+`lyricsgenius` provides a simple interface to the song, artist, and lyrics data stored on [Genius.com](https://www.genius.com).
 
-[![pypi license](http://img.shields.io/pypi/l/django-earthdistances.svg)](https://pypi.python.org/pypi/django-earthdistance)
+The full documentation for `lyricsgenius` is available online at [Read the Docs](https://lyricsgenius.readthedocs.io/en/master/).
 
-django-earthdistance
-====================
+## Setup
+Before using this package you'll need to sign up for a (free) account that authorizes access to [the Genius API](http://genius.com/api-clients). The Genius account provides a `access_token` that is required by the package. See the [Usage section](https://github.com/johnwmillr/LyricsGenius#usage) below for examples.
 
-Using PostgreSQL\'s EarthDistance extension for django 1.11, 2.2 and 3.2
-(for older versions see *with\_djorm\_expressions* branch)
+## Installation
+`lyricsgenius` requires Python 3.
 
-Earthdistance allows to do fast geolocalized queries without using
-PostGIS
+Use `pip` to install the package from PyPI:
 
-Usage
------
-
-Cube and EarthDistance extensions must be enabled in postgreSQL BD, so
-log in database using pgsql and install extensions:
-
-``` {.sql}
-=> create extension cube;
-=> create extension earthdistance;
+```bash
+pip install lyricsgenius
 ```
 
-Filter by rows inside a circunference of radius r
--------------------------------------------------
+Or, install the latest version of the package from GitHub:
 
-``` {.python}
-from django.db import models
-
-from django_earthdistance.models import EarthDistanceQuerySet
-
-class MyModel(models.Model):
-    latitude = models.FloatField()
-    longitude = models.FloatField()
-
-    objects = EarthDistanceQuerySet.as_manager()
-
-# Define fields to query in DistanceExpression initialization
-# search with lat=0.2546 and lon=-38.25 and distance 1500 meters
-# use param `annotate` to set a custom field for the distance, `_ed_distance` as default
-
-MyModel.objects.in_distance(1500, fields=['latitude', 'longitude'], points=[0.2546, -38.25])
+```bash
+pip install git+https://github.com/johnwmillr/LyricsGenius.git
 ```
 
-Annotate each row returned by a query with distance between two points
-----------------------------------------------------------------------
+## Usage
+Import the package and initiate Genius:
 
-``` {.python}
-from django_earthdistance.models import EarthDistance, LlToEarth
-
-MyModel.objects.filter(....).annotate(
-    distance=EarthDistance([
-        LlToEarth([0.2546, -38.25]),
-        LlToEarth(['latitude', 'longitude'])
-    ]))
+```python
+import lyricsgenius
+genius = lyricsgenius.Genius(token)
 ```
 
-Optimizing perfomance with indexes
-----------------------------------
+If you don't pass a token to the `Genius` class, `lyricsgenus` will look for an environment variable called `GENIUS_ACCESS_TOKEN` and attempt to use that for authentication.
 
-PostgreSQL allow to use GiST indexes with functions results, a good
-perfomance improvement is to store [ll\_to\_earth]{.title-ref} results
-in an index, [ll\_to\_earth]{.title-ref} is a function that calculates
-the position of a point on the surface of the earth (assuming earth is
-perfectly spherical)
-
-``` {.sql}
--- Example MyModel table is app_mymodel and points columns are latitude and longitude
-CREATE INDEX mymodel_location ON app_mymodel USING gist (ll_to_earth(latitude, longitude));
+```python
+genius = Genius()
 ```
 
-### For django \< 1.7
+Search for songs by a given artist:
 
-Also, using south is preferred, just add this migration to migrations/
-folder and edit it to your needs, index will be created
-
-``` {.python}
-class Migration(SchemaMigration):
-
-    def forwards(self, orm):
-        cursor = connection.cursor()
-        cursor.execute("CREATE INDEX mymodel_location ON app_mymodel USING gist (ll_to_earth(latitude, longitude));")
-
-
-    def backwards(self, orm):
-        # Deleting field 'Venue.coords'
-        cursor = connection.cursor()
-        cursor.execute("DROP INDEX mymodel_location ON app_mymodel;")
+```python
+artist = genius.search_artist("Andy Shauf", max_songs=3, sort="title")
+print(artist.songs)
 ```
+By default, the `search_artist()` only returns songs where the given artist is the primary artist.
+However, there may be instances where it is desirable to get all of the songs that the artist appears on.
+You can do this by setting the `include_features` argument to `True`.
+
+```python
+artist = genius.search_artist("Andy Shauf", max_songs=3, sort="title", include_features=True)
+print(artist.songs)
+```
+
+Search for a single song by the same artist:
+
+```python
+song = artist.song("To You")
+# or:
+# song = genius.search_song("To You", artist.name)
+print(song.lyrics)
+```
+
+Add the song to the artist object:
+
+```python
+artist.add_song(song)
+# the Artist object also accepts song names:
+# artist.add_song("To You")
+```
+
+Save the artist's songs to a JSON file:
+
+```python
+artist.save_lyrics()
+```
+
+Searching for an album and saving it:
+
+```python
+album = genius.search_album("The Party", "Andy Shauf")
+album.save_lyrics()
+```
+
+There are various options configurable as parameters within the `Genius` class:
+
+```python
+genius.verbose = False # Turn off status messages
+genius.remove_section_headers = True # Remove section headers (e.g. [Chorus]) from lyrics when searching
+genius.skip_non_songs = False # Include hits thought to be non-songs (e.g. track lists)
+genius.excluded_terms = ["(Remix)", "(Live)"] # Exclude songs with these words in their title
+```
+
+You can also call the package from the command line:
+
+```bash
+export GENIUS_ACCESS_TOKEN="my_access_token_here"
+python3 -m lyricsgenius --help
+```
+
+Search for and save lyrics to a given song and album:
+
+```bash
+python3 -m lyricsgenius song "Begin Again" "Andy Shauf" --save
+python3 -m lyricsgenius album "The Party" "Andy Shauf" --save
+```
+
+Search for five songs by 'The Beatles' and save the lyrics:
+
+```bash
+python3 -m lyricsgenius artist "The Beatles" --max-songs 5 --save
+```
+
+## Example projects
+
+  - [Trucks and Beer: A textual analysis of popular country music](http://www.johnwmillr.com/trucks-and-beer/)
+  - [Neural machine translation: Explaining the Meaning Behind Lyrics](https://github.com/tsandefer/dsi_capstone_3)
+  - [What makes some blink-182 songs more popular than others?](http://jdaytn.com/posts/download-blink-182-data/)
+  - [Sentiment analysis on hip-hop lyrics](https://github.com/Hugo-Nattagh/2017-Hip-Hop)
+  - [Does Country Music Drink More Than Other Genres?](https://towardsdatascience.com/does-country-music-drink-more-than-other-genres-a21db901940b)
+  - [49 Years of Lyrics: Why So Angry?](https://towardsdatascience.com/49-years-of-lyrics-why-so-angry-1adf0a3fa2b4)
+
+## Contributing
+Please contribute! If you want to fix a bug, suggest improvements, or add new features to the project, just [open an issue](https://github.com/johnwmillr/LyricsGenius/issues) or send me a pull request.
