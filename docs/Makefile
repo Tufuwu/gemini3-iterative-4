@@ -6,13 +6,8 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
-
-export PACKAGE_VERSION
-
-ifndef PYTHONPATH
-$(error PYTHONPATH is undefined)
-endif
-$(info $$PYTHONPATH is [${PYTHONPATH}])
+PDFLATEX      = pdflatex
+IMCONVERT     = convert
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -52,6 +47,7 @@ help:
 	@echo "  pseudoxml  to make pseudoxml-XML files for display purposes"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+	@echo "  latex      to build wiring illustrations"
 
 clean:
 	rm -rf $(BUILDDIR)/*
@@ -92,17 +88,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/pysparkdl.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/RPLCD.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/pysparkdl.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/RPLCD.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/pysparkdl"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/pysparkdl"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/RPLCD"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/RPLCD"
 	@echo "# devhelp"
 
 epub:
@@ -182,3 +178,9 @@ pseudoxml:
 	$(SPHINXBUILD) -b pseudoxml $(ALLSPHINXOPTS) $(BUILDDIR)/pseudoxml
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
+
+latex:
+	$(PDFLATEX) wiring-i2c.tex
+	$(IMCONVERT) -density 400 wiring-i2c.pdf -resize 500x500 -background white -alpha remove -bordercolor white -border 5 _static/wiring-i2c.png
+	$(PDFLATEX) wiring-gpio.tex
+	$(IMCONVERT) -density 400 wiring-gpio.pdf -resize 500x500 -background white -alpha remove -bordercolor white -border 5 _static/wiring-gpio.png

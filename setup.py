@@ -1,45 +1,35 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-""" distribute- and pip-enabled setup.py """
+from setuptools import setup
 
-import setuptools
-import sys
+readme = open('README.rst').read()
 
-import sparkdl
-
-exclude_packages = ('tests', 'tests.*')
-
-if '--with-tests' in sys.argv:
-    index = sys.argv.index('--with-tests')
-    sys.argv.pop(index)
-    exclude_packages = ()
-
-setuptools.setup(
-    name='sparkdl',
-    version=sparkdl.__version__,
-    packages=setuptools.find_packages(exclude=exclude_packages),
-    url="https://github.com/databricks/spark-deep-learning",
-    author="Weichen Xu",
-    author_email="weichen.xu@databricks.com",
-    description="Deep Learning Pipelines for Apache Spark",
-    long_description="",
-    classifiers=[
-        "Intended Audience :: Education",
-        "Intended Audience :: Science/Research",
-        "Intended Audience :: Developers",
-        "Environment :: Console",
-        "License :: OSI Approved :: BSD License",
-        "Operating System :: Unix",
-        "Programming Language :: Python :: 3",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Software Development",
-    ],
-    platforms=["Linux"],
-    license="BSD",
-    keywords="spark deep learning horovod model distributed training",
-    install_requires=[],
-    extras_require={},
-    tests_require=["nose", "pytest"],
-    zip_safe=False,
-)
+setup(name='RPLCD',
+      version='1.3.1',
+      description='A Raspberry Pi LCD library for the widely used Hitachi HD44780 controller.',
+      long_description=readme,
+      author='Danilo Bargen',
+      author_email='mail@dbrgn.ch',
+      url='https://github.com/dbrgn/RPLCD',
+      license='MIT',
+      keywords='raspberry, raspberry pi, lcd, liquid crystal, hitachi, hd44780',
+      packages=['RPLCD', 'RPLCD.codecs', 'RPLCD_Tests'],
+      entry_points={
+          'console_scripts': ['rplcd-tests=RPLCD_Tests.entrypoint:run'],
+      },
+      platforms=['any'],
+      python_requires='>=3.4',
+      classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Environment :: Other Environment',
+          'Intended Audience :: Developers',
+          'License :: OSI Approved :: MIT License',
+          'Operating System :: POSIX',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.4',
+          'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
+          'Topic :: System :: Hardware :: Hardware Drivers',
+          'Topic :: Software Development :: Libraries :: Python Modules',
+      ],
+    )
