@@ -1,151 +1,184 @@
-# serve-index
+# inline-css [![npm](http://img.shields.io/npm/v/inline-css.svg?style=flat)](https://badge.fury.io/js/inline-css) ![Build Status](https://github.com/jonkemp/inline-css/actions/workflows/main.yml/badge.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/jonkemp/inline-css/badge.svg?branch=master&service=github)](https://coveralls.io/github/jonkemp/inline-css?branch=master)
 
-[![NPM Version][npm-image]][npm-url]
-[![NPM Downloads][downloads-image]][downloads-url]
-[![Linux Build Status][ci-image]][ci-url]
-[![Windows Build][appveyor-image]][appveyor-url]
-[![Coverage Status][coveralls-image]][coveralls-url]
+[![NPM](https://nodei.co/npm/inline-css.png?downloads=true)](https://nodei.co/npm/inline-css/)
 
-  Serves pages that contain directory listings for a given path.
+> Inline your CSS properties into the `style` attribute in an html file. Useful for emails.
+
+Inspired by the [juice](https://github.com/Automattic/juice) library.
+
+## Features
+- Uses [cheerio](https://github.com/cheeriojs/cheerio) instead of jsdom
+- Works on Windows
+- Preserves Doctype
+- Modular
+- Gets your CSS automatically through style and link tags
+- Functions return [A+ compliant](https://promisesaplus.com/) Promises
+
+## How It Works
+
+This module takes html and inlines the CSS properties into the style attribute.
+
+`/path/to/file.html`:
+```html
+<html>
+<head>
+  <style>
+    p { color: red; }
+  </style>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <p>Test</p>
+</body>
+</html>
+```
+
+`style.css`
+```css
+p {
+  text-decoration: underline;
+}
+```
+
+Output:
+```html
+<html>
+<head>
+</head>
+<body>
+  <p style="color: red; text-decoration: underline;">Test</p>
+</body>
+</html>
+```
+
+## What is this useful for ?
+
+- HTML emails. For a comprehensive list of supported selectors see
+[here](http://www.campaignmonitor.com/css/)
+- Embedding HTML in 3rd-party websites.
+- Performance. Downloading external stylesheets delays the rendering of the page in the browser. Inlining CSS speeds up this process because the browser doesn't have to wait to download an external stylesheet to start rendering the page.
+
 
 ## Install
 
-This is a [Node.js](https://nodejs.org/en/) module available through the
-[npm registry](https://www.npmjs.com/). Installation is done using the
-[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+Install with [npm](https://npmjs.org/package/inline-css)
 
-```sh
-$ npm install serve-index
+```
+npm install --save inline-css
+```
+
+## Usage
+
+```js
+var inlineCss = require('inline-css');
+var html = "<style>div{color:red;}</style><div/>";
+
+inlineCss(html, options)
+    .then(function(html) { console.log(html); });
 ```
 
 ## API
 
-```js
-var serveIndex = require('serve-index')
-```
+### inlineCss(html, options)
 
-### serveIndex(path, options)
 
-Returns middlware that serves an index of the directory in the given `path`.
+#### options.extraCss
 
-The `path` is based off the `req.url` value, so a `req.url` of `'/some/dir`
-with a `path` of `'public'` will look at `'public/some/dir'`. If you are using
-something like `express`, you can change the URL "base" with `app.use` (see
-the express example).
+Type: `String`  
+Default: `""`
 
-#### Options
+Extra css to apply to the file.
 
-Serve index accepts these properties in the options object.
 
-##### filter
+#### options.applyStyleTags
 
-Apply this filter function to files. Defaults to `false`. The `filter` function
-is called for each file, with the signature `filter(filename, index, files, dir)`
-where `filename` is the name of the file, `index` is the array index, `files` is
-the array of files and `dir` is the absolute path the file is located (and thus,
-the directory the listing is for).
+Type: `Boolean`  
+Default: `true`
 
-##### hidden
+Whether to inline styles in `<style></style>`.
 
-Display hidden (dot) files. Defaults to `false`.
 
-##### icons
+#### options.applyLinkTags
 
-Display icons. Defaults to `false`.
+Type: `Boolean`  
+Default: `true`
 
-##### stylesheet
+Whether to resolve `<link rel="stylesheet">` tags and inline the resulting styles.
 
-Optional path to a CSS stylesheet. Defaults to a built-in stylesheet.
 
-##### template
+#### options.removeStyleTags
 
-Optional path to an HTML template or a function that will render a HTML
-string. Defaults to a built-in template.
+Type: `Boolean`  
+Default: `true`
 
-When given a string, the string is used as a file path to load and then the
-following tokens are replaced in templates:
+Whether to remove the original `<style></style>` tags after (possibly) inlining the css from them.
 
-  * `{directory}` with the name of the directory.
-  * `{files}` with the HTML of an unordered list of file links.
-  * `{linked-path}` with the HTML of a link to the directory.
-  * `{style}` with the specified stylesheet and embedded images.
 
-When given as a function, the function is called as `template(locals, callback)`
-and it needs to invoke `callback(error, htmlString)`. The following are the
-provided locals:
+#### options.removeLinkTags
 
-  * `directory` is the directory being displayed (where `/` is the root).
-  * `displayIcons` is a Boolean for if icons should be rendered or not.
-  * `fileList` is a sorted array of files in the directory. The array contains
-    objects with the following properties:
-    - `name` is the relative name for the file.
-    - `stat` is a `fs.Stats` object for the file.
-  * `path` is the full filesystem path to `directory`.
-  * `style` is the default stylesheet or the contents of the `stylesheet` option.
-  * `viewName` is the view name provided by the `view` option.
+Type: `Boolean`  
+Default: `true`
 
-##### view
+Whether to remove the original `<link rel="stylesheet">` tags after (possibly) inlining the css from them.
 
-Display mode. `tiles` and `details` are available. Defaults to `tiles`.
+#### options.url
 
-## Examples
+Type: `String`  
+Default: `filePath`
 
-### Serve directory indexes with vanilla node.js http server
+How to resolve hrefs. **Required**.
 
-```js
-var finalhandler = require('finalhandler')
-var http = require('http')
-var serveIndex = require('serve-index')
-var serveStatic = require('serve-static')
+#### options.preserveMediaQueries
 
-// Serve directory indexes for public/ftp folder (with icons)
-var index = serveIndex('public/ftp', {'icons': true})
+Type: `Boolean`  
+Default: `false`
 
-// Serve up public/ftp folder files
-var serve = serveStatic('public/ftp')
+Preserves all media queries (and contained styles) within `<style></style>` tags as a refinement when `removeStyleTags` is `true`. Other styles are removed.
 
-// Create server
-var server = http.createServer(function onRequest(req, res){
-  var done = finalhandler(req, res)
-  serve(req, res, function onNext(err) {
-    if (err) return done(err)
-    index(req, res, done)
-  })
-})
+#### options.applyWidthAttributes
 
-// Listen
-server.listen(3000)
-```
+Type: `Boolean`  
+Default: `false`
 
-### Serve directory indexes with express
+Whether to use any CSS pixel widths to create `width` attributes on elements.
 
-```js
-var express    = require('express')
-var serveIndex = require('serve-index')
+#### options.applyTableAttributes
 
-var app = express()
+Type: `Boolean`  
+Default: `false`
 
-// Serve URLs like /ftp/thing as public/ftp/thing
-// The express.static serves the file contents
-// The serveIndex is this module serving the directory
-app.use('/ftp', express.static('public/ftp'), serveIndex('public/ftp', {'icons': true}))
+Whether to apply the `border`, `cellpadding` and `cellspacing` attributes to `table` elements.
 
-// Listen
-app.listen(3000)
-```
+#### options.removeHtmlSelectors
+
+Type: `Boolean`  
+Default: `false`
+
+Whether to remove the `class` and `id` attributes from the markup.
+
+#### options.codeBlocks
+
+Type: `Object`  
+Default: `{ EJS: { start: '<%', end: '%>' }, HBS: { start: '{{', end: '}}' } }`
+
+An object where each value has a `start` and `end` to specify fenced code blocks that should be ignored during parsing and inlining. For example, Handlebars (hbs) templates are `HBS: {start: '{{', end: '}}'}`. `codeBlocks` can fix problems where otherwise inline-css might interpret code like `<=` as HTML, when it is meant to be template language code. Note that `codeBlocks` is a dictionary which can contain many different code blocks, so don't do `codeBlocks: {...}` do `codeBlocks.myBlock = {...}`.
+
+### Special markup
+
+#### data-embed
+
+When a data-embed attribute is present on a <style></style> tag, inline-css will not inline the styles and will not remove the <style></style> tags.
+
+This can be used to embed email client support hacks that rely on css selectors into your email templates.
+
+### cheerio options
+
+Options to passed to [cheerio](https://github.com/cheeriojs/cheerio).
+
+## Contributing
+
+See the [CONTRIBUTING Guidelines](https://github.com/jonkemp/inline-css/blob/master/CONTRIBUTING.md)
 
 ## License
 
-[MIT](LICENSE). The [Silk](http://www.famfamfam.com/lab/icons/silk/) icons
-are created by/copyright of [FAMFAMFAM](http://www.famfamfam.com/).
-
-[appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/serve-index/master.svg?label=windows
-[appveyor-url]: https://ci.appveyor.com/project/dougwilson/serve-index
-[ci-image]: https://badgen.net/github/checks/expressjs/serve-index/master?label=ci
-[ci-url]: https://github.com/expressjs/serve-index/actions/workflows/ci.yml
-[coveralls-image]: https://img.shields.io/coveralls/expressjs/serve-index/master.svg
-[coveralls-url]: https://coveralls.io/r/expressjs/serve-index?branch=master
-[downloads-image]: https://img.shields.io/npm/dm/serve-index.svg
-[downloads-url]: https://npmjs.org/package/serve-index
-[npm-image]: https://img.shields.io/npm/v/serve-index.svg
-[npm-url]: https://npmjs.org/package/serve-index
+MIT © [Jonathan Kemp](http://jonkemp.com)
