@@ -1,101 +1,109 @@
-====================================================
-PyPHER - Python-based PSF Homogenization kERnels
-====================================================
+.. image:: https://img.shields.io/travis/cuducos/webassets-elm.svg?style=flat
+  :target: https://travis-ci.org/cuducos/webassets-elm
+  :alt: Travis CI
 
-|pypi| |docs| |license| |doi| |actions|
+.. image:: https://img.shields.io/coveralls/cuducos/webassets-elm.svg?style=flat
+  :target: https://coveralls.io/github/cuducos/webassets-elm
+  :alt: Covearge
 
-Compute an homogenization kernel between two PSFs.
+.. image:: https://img.shields.io/pypi/status/webassets-elm.svg?style=flat
+  :target: https://pypi.python.org/pypi/webassets-elm
+  :alt: Status
 
-This code is well suited for PSF matching applications in both an astronomical or microscopy context.
+.. image:: https://img.shields.io/pypi/v/webassets-elm.svg?style=flat
+  :target: https://pypi.python.org/pypi/webassets-elm
+  :alt: Latest release
 
-It has been developed as part of the ESA `Euclid <http://www.cosmos.esa.int/web/euclid>`_ mission and is currently being used for multi-band photometric studies of `HST <https://www.spacetelescope.org/>`_ (visible) and `Herschel <http://www.cosmos.esa.int/web/herschel/home>`_ (IR) data.
+.. image:: https://img.shields.io/pypi/pyversions/webassets-elm.svg?style=flat
+  :target: https://pypi.python.org/pypi/webassets-elm
+  :alt: Python versions
 
-:Paper: http://arxiv.org/abs/1609.02006
-:Documentation: https://pypher.readthedocs.io
+.. image:: https://img.shields.io/pypi/l/webassets-elm.svg?style=flat
+  :target: https://pypi.python.org/pypi/webassets-elm
+  :alt: License
 
-Features
+Elm filter for webassets
+########################
+
+Filter for compiling `Elm <http://elm-lang.org>`_ files using `webassets <http://webassets.readthedocs.org>`_.
+
+Install
+*******
+
+::
+
+    pip install webassets-elm
+
+As of version 0.2.0, this plugin requires **Elm 0.19** or newer (building with ``elm make``).
+
+If you need to build your Elm project with ``elm-make`` (Elm 0.18 and older), you can pin your ``webassets-elm`` package to version ``0.1.7``.
+
+Basic usage
+***********
+
+.. code:: python
+
+    from webassets.filter import register_filter
+    from webassets_elm import Elm
+
+    register_filter(Elm)
+
+Settings
 ========
 
-1. **Warp** (rotation + resampling) the PSF images (if necessary),
-2. **Filter** images in Fourier space using a regularized Wiener filter,
-3. **Produce** a homogenization kernel.
+**Optionally** as an evironment variable you can have:
 
-**Note:** ``pypher`` needs the pixel scale information to be present in the FITS files. If not, use the provided ``addpixscl`` method to add this missing info.
+* ``ELM_BIN``: alternative path to ``elm`` if it is **not** available globally (e.g. ``node_modules/.bin/elm``).
 
-**Warning:** This code **does not**
+* ``ELM_OPTIMIZE``: enable the Elm compiler optimization option. Recommended for production output.
 
-    * interpolate NaN values (replaced by 0 instead),
-    * center PSF images,
-    * minimize the kernel size.
+* ``ELM_DEBUG``: enable the Elm compiler debug option.
 
+Examples
+========
 
-Installation
+Flask with `flask-assets <http://flask-assets.readthedocs.io/>`_
+----------------------------------------------------------------
+
+.. code:: python
+
+    from flask import Flask
+    from flask_assets import Bundle, Environment
+    from webassets.filter import register_filter
+    from webassets_elm import Elm
+
+    app = Flask(__name__)
+
+    register_filter(Elm)
+    assets = Environment(app)
+
+    elm_js = Bundle('elm/main.elm', filters=('elm',), output='app.js')
+    assets.register('elm_js', elm_js)
+
+Django with `django-assets <http://django-assets.readthedocs.org>`_
+-------------------------------------------------------------------
+
+.. code:: python
+
+    from django_assets import Bundle, register
+    from webassets.filter import register_filter
+    from webassets_elm import Elm
+
+    register_filter(Elm)
+
+    elm_js = Bundle('elm/main.elm', filters=('elm',), output='app.js')
+    register('elm_js', elm_js)
+
+Contributing
 ============
 
-PyPHER works both with Python 2.7 and 3.4 or later and relies on `numpy <http://www.numpy.org/>`_, `scipy <http://www.scipy.org/>`_ and `astropy <http://www.astropy.org/>`_ libraries.
+Feel free to `report an issue <http://github.com/cuducos/webassets-elm/issues>`_, `open a pull request <http://github.com/cuducos/webassets-elm/pulls>`_, or `drop a line <http://twitter.com/cuducos>`_.
 
-Option 1: `Pip <https://pypi.python.org/pypi/pypher>`_
-------------------------------------------------------
+Don't forget to write and run tests, and format code with `Black <https://black.readthedocs.io/>`_:
 
-.. code:: bash
+::
 
-    $ pip install pypher
+    python setup.py test
+    black .
 
-Option 2: from `source <https://git.ias.u-psud.fr/aboucaud/pypher>`_
---------------------------------------------------------------------
-
-.. code:: bash
-
-    $ git clone https://git.ias.u-psud.fr/aboucaud/pypher.git
-    $ cd pypher
-    $ python setup.py install
-
-
-Basic example
-=============
-
-.. code:: bash
-
-    $ pypher psf_a.fits psf_b.fits kernel_a_to_b.fits -r 1.e-5
-
-This will create the desired kernel ``kernel_a_to_b.fits`` and a short
-log ``kernel_a_to_b.log`` with information about the processing.
-
-
-Acknowledging
-=============
-
-If you make use of any product of this code in a scientific publication,
-please consider acknowledging the work by citing the paper |arxiv| as
-well as the code itself |doi|.
-
-
-.. |pypi| image:: https://img.shields.io/pypi/v/pypher.svg
-    :alt: Latest Version
-    :scale: 100%
-    :target: https://pypi.python.org/pypi/pypher
-
-.. |docs| image:: https://readthedocs.org/projects/pypher/badge/?version=latest
-    :alt: Documentation Status
-    :scale: 100%
-    :target: https://pypher.readthedocs.org/en/latest/?badge=latest
-
-.. |license| image:: https://img.shields.io/badge/license-BSD-blue.svg?style=flat
-    :alt: License type
-    :scale: 100%
-    :target: https://git.ias.u-psud.fr/aboucaud/pypher/blob/master/LICENSE
-
-.. |doi| image:: https://zenodo.org/badge/21241/aboucaud/pypher.svg
-    :alt: DOI number
-    :scale: 100%
-    :target: https://zenodo.org/badge/latestdoi/21241/aboucaud/pypher
-
-.. |arxiv| image:: http://img.shields.io/badge/arXiv-1609.02006-yellow.svg?style=flat
-     :alt: arXiv paper
-     :scale: 100%
-     :target: https://arxiv.org/abs/1609.02006
-
-.. |actions| image:: https://github.com/aboucaud/pypher/actions/workflows/pytest.yml/badge.svg
-    :alt: GitHub CI
-    :scale: 100%
-    :target: https://github.com/aboucaud/pypher/actions/workflows/pytest.yml
+Please note you need ``elm`` binary available to run tests, here you can find different ways to `install Elm <http://elm-lang.org/install>`_.
