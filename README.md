@@ -1,102 +1,92 @@
-# SDialog
-[![Documentation Status](https://app.readthedocs.org/projects/sdialog/badge/?version=latest)](https://sdialog.readthedocs.io)
-[![PyPI version](https://badge.fury.io/py/sdialog.svg)](https://badge.fury.io/py/sdialog)
-[![Downloads](https://static.pepy.tech/badge/sdialog)](https://pepy.tech/project/sdialog)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/idiap/sdialog/master?filepath=tutorials)
-<!-- [![Build Status](https://api.travis-ci.com/sergioburdisso/sdialog.svg?branch=master)](https://app.travis-ci.com/github/idiap/sdialog) -->
-<!-- [![codecov](https://codecov.io/gh/idiap/sdialog/branch/master/graph/badge.svg)](https://codecov.io/gh/idiap/sdialog) -->
+[![CI](https://github.com/jneight/django-earthdistance/actions/workflows/ci.yml/badge.svg)](https://github.com/jneight/django-earthdistance/actions/workflows/ci.yml)
 
-**SDialog** is a modular, extensible Python toolkit for synthetic dialogue generation and analysis, designed for research and development with instruction-tuned Large Language Models (LLMs). It enables flexible, persona-driven, multi-agent dialogue simulation, orchestration, and scenario management, making it ideal for building, evaluating, and experimenting with conversational agents.
+[![pypi version](https://img.shields.io/pypi/v/django-earthdistance.svg)](https://pypi.python.org/pypi/django-earthdistance)
 
-## 🚀 Motivation
+[![pypi license](http://img.shields.io/pypi/l/django-earthdistances.svg)](https://pypi.python.org/pypi/django-earthdistance)
 
-Modern conversational AI research and applications increasingly require high-quality, flexible, and reproducible synthetic dialogues for training, evaluation, and benchmarking. SDialog addresses the need for:
+django-earthdistance
+====================
 
-- **Standardization:** Clear definitions for dialogue, persona, and event structures.
-- **Abstraction:** Abstract interfaces for both single-agent and multi-agent dialogue generation.
-- **Fine-grained Control:** Orchestration to inject instructions, simulate user behaviors, and enforce scenario constraints.
-- **LLM Integration:** Seamless integration with instruction-tuned LLMs, prompt management, and memory handling.
-- **Scenario and Dataset Management:** Tools for managing complex scenarios, flowcharts, and persona definitions.
+Using PostgreSQL\'s EarthDistance extension for django 1.11, 2.2 and 3.2
+(for older versions see *with\_djorm\_expressions* branch)
 
-## ✨ Features
+Earthdistance allows to do fast geolocalized queries without using
+PostGIS
 
-- **Persona-based Role-Playing:** Define rich agent personas to simulate realistic conversations.
-- **Multi-Agent Dialogue:** Generate dialogues between multiple agents, each with their own persona and behavior.
-- **Dialogue Orchestration:** Control agent actions and inject instructions dynamically using orchestrators.
-- **Scenario Management:** Easily describe and manage dialogue scenarios, including flowcharts and user/system goals.
-- **Flexible Serialization:** Export dialogues and events in JSON or plain text for downstream tasks.
-- **Integration with LLMs:** Out-of-the-box support for [Ollama](https://ollama.com/) and [LangChain](https://python.langchain.com/), with planned support for HuggingFace models.
+Usage
+-----
 
-## ⚡ Installation
+Cube and EarthDistance extensions must be enabled in postgreSQL BD, so
+log in database using pgsql and install extensions:
 
-```bash
-pip install sdialog
+``` {.sql}
+=> create extension cube;
+=> create extension earthdistance;
 ```
 
-> **Note:** You must have [Ollama](https://ollama.com/download) running on your system to use the default LLM integration.
-> ```bash
-> curl -fsSL https://ollama.com/install.sh | sh
-> ```
+Filter by rows inside a circunference of radius r
+-------------------------------------------------
 
-## 🏁 Quick Start
+``` {.python}
+from django.db import models
 
-Define personas, create agents, and generate a dialogue:
+from django_earthdistance.models import EarthDistanceQuerySet
 
-```python
-from sdialog import Persona, PersonaAgent
+class MyModel(models.Model):
+    latitude = models.FloatField()
+    longitude = models.FloatField()
 
-# Define personas
-alice = Persona(name="Alice", role="friendly barista", personality="cheerful and helpful")
-bob = Persona(name="Bob", role="customer", personality="curious and polite")
+    objects = EarthDistanceQuerySet.as_manager()
 
-# Create agents
-alice_agent = PersonaAgent("llama2", persona=alice, name="Alice")
-bob_agent = PersonaAgent("llama2", persona=bob, name="Bob")
+# Define fields to query in DistanceExpression initialization
+# search with lat=0.2546 and lon=-38.25 and distance 1500 meters
+# use param `annotate` to set a custom field for the distance, `_ed_distance` as default
 
-# Generate a dialogue
-dialog = alice_agent.dialog_with(bob_agent)
-dialog.print()
+MyModel.objects.in_distance(1500, fields=['latitude', 'longitude'], points=[0.2546, -38.25])
 ```
 
-## 🎛️ Orchestration Example
+Annotate each row returned by a query with distance between two points
+----------------------------------------------------------------------
 
-Add orchestration to control dialogue length or simulate agent behaviors:
+``` {.python}
+from django_earthdistance.models import EarthDistance, LlToEarth
 
-```python
-from sdialog.orchestrators import LengthOrchestrator, ChangeMindOrchestrator
-
-length_orch = LengthOrchestrator(min=3, max=6)
-mind_orch = ChangeMindOrchestrator(probability=0.5, reasons=["changed plans", "new information"], max_times=1)
-alice_agent = alice_agent | length_orch | mind_orch
+MyModel.objects.filter(....).annotate(
+    distance=EarthDistance([
+        LlToEarth([0.2546, -38.25]),
+        LlToEarth(['latitude', 'longitude'])
+    ]))
 ```
 
-## 📚 STAR Dataset Integration
+Optimizing perfomance with indexes
+----------------------------------
 
-Work with the STAR dataset for scenario-driven dialogue generation:
+PostgreSQL allow to use GiST indexes with functions results, a good
+perfomance improvement is to store [ll\_to\_earth]{.title-ref} results
+in an index, [ll\_to\_earth]{.title-ref} is a function that calculates
+the position of a point on the surface of the earth (assuming earth is
+perfectly spherical)
 
-```python
-from sdialog.datasets import STAR
-
-STAR.set_path("/path/to/star-dataset")
-dialog = STAR.get_dialog(123)
-dialog.print(scenario=True)
+``` {.sql}
+-- Example MyModel table is app_mymodel and points columns are latitude and longitude
+CREATE INDEX mymodel_location ON app_mymodel USING gist (ll_to_earth(latitude, longitude));
 ```
 
-## 📖 Documentation
+### For django \< 1.7
 
-- **[Documentation](https://sdialog.readthedocs.io)** - Full package documentation, including installation, API reference, usage guides, and advanced examples available.
-- **[API Reference](https://sdialog.readthedocs.io/en/latest/api/index.html):** See docstrings in the codebase for detailed documentation of all classes and functions.
-- **[Tutorials](https://github.com/idiap/sdialog/tree/main/tutorials):** Tutorials for hands-on examples as Jupyter Notebooks.
+Also, using south is preferred, just add this migration to migrations/
+folder and edit it to your needs, index will be created
+
+``` {.python}
+class Migration(SchemaMigration):
+
+    def forwards(self, orm):
+        cursor = connection.cursor()
+        cursor.execute("CREATE INDEX mymodel_location ON app_mymodel USING gist (ll_to_earth(latitude, longitude));")
 
 
-## 🙏 Acknowledgments
-
-This work was supported by the EU Horizon 2020 project [ELOQUENCE](https://eloquenceai.eu/) (grant number 101070558).
-
-This work was also initially created in preparation for the 2025 Jelinek Memorial Summer Workshop on Speech and Language Technologies ([JSALT 2025](https://jsalt2025.fit.vut.cz/)) as part of the work done by the ["Play your Part" research group](https://jsalt2025.fit.vut.cz/play-your-part).
-
-
-## 📝 License
-
-MIT License  
-Copyright (c) 2025 Idiap Research Institute
+    def backwards(self, orm):
+        # Deleting field 'Venue.coords'
+        cursor = connection.cursor()
+        cursor.execute("DROP INDEX mymodel_location ON app_mymodel;")
+```

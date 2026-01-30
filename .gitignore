@@ -1,4 +1,6 @@
-dist
-*.egg-info
-.*
-__*__
+*.log
+*.pot
+*.pyc
+build/
+dist/
+django_earthdistance.egg-info/
