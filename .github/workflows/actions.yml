@@ -1,54 +1,57 @@
-name: Node.js CI
+name: Node.js CI with LocalStack
 
 on:
   push:
-    branches: [ main, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, main ]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:9.6
-        env:
-          POSTGRES_DB: sequelize
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Use Node.js
+      - name: Use Node.js 12
         uses: actions/setup-node@v3
         with:
-          node-version: '10'
+          node-version: '12'
           cache: 'npm'
 
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Start LocalStack
+        run: |
+          docker pull localstack/localstack
+          docker run --rm -d \
+            -p 4566:4566 \
+            -e SERVICES=cloudformation,iam,sts,lambda,s3,apigateway \
+            --name localstack_main \
+            localstack/localstack
+          
+          # Wait for port to be open
+          timeout 60s bash -c "until (echo > /dev/tcp/localhost/4566) >/dev/null 2>&1; do sleep 2; done"
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-
-      - name: Coverage and Coveralls
         run: |
-          ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha --report lcovonly test/overall.test.js -- --exit
-          cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
-          rm -rf ./coverage
+          npm install
+          npm install -g serverless@2
+
+      - name: Run lint and unit tests
+        run: |
+          set -e
+          npm run lint
+          npm run test
+
+      - name: Run integration tests
         env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-          COVERALLS_SERVICE_NAME: github
-          COVERALLS_GIT_BRANCH: ${{ github.ref_name }}
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1
+          SLS_DEBUG: "*"
+        run: |
+          npm link
+          # Ensure LocalStack internal services are ready
+          sleep 15
+          npm run test:integration
 
