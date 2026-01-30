@@ -1,128 +1,498 @@
-.. -*- mode: rst -*-
+*************************************************************
+fixtures: Fixtures with cleanups for testing and convenience.
+*************************************************************
 
-|
+  Copyright (c) 2010, Robert Collins <robertc@robertcollins.net>
 
-.. image:: https://badge.fury.io/py/yasa.svg
-    :target: https://badge.fury.io/py/yasa
+  Licensed under either the Apache License, Version 2.0 or the BSD 3-clause
+  license at the users choice. A copy of both licenses are available in the
+  project source as Apache-2.0 and BSD. You may not use this file except in
+  compliance with one of these two licences.
 
-.. image:: https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue
-    :target: https://www.python.org/downloads/
+  Unless required by applicable law or agreed to in writing, software
+  distributed under these licenses is distributed on an "AS IS" BASIS, WITHOUT
+  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+  license you chose for the specific language governing permissions and
+  limitations under that license.
 
-.. image:: https://img.shields.io/github/license/raphaelvallat/yasa.svg
-    :target: https://github.com/raphaelvallat/yasa/blob/master/LICENSE
 
-.. image:: https://codecov.io/gh/raphaelvallat/yasa/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/raphaelvallat/yasa
+Fixtures defines a Python contract for reusable state / support logic,
+primarily for unit testing. Helper and adaption logic is included to make it
+easy to write your own fixtures using the fixtures contract. Glue code is
+provided that makes using fixtures that meet the Fixtures contract in unittest
+compatible test cases easy and straight forward.
 
-.. image:: https://pepy.tech/badge/yasa
-    :target: https://pepy.tech/badge/yasa
+Dependencies
+============
 
-----------------
+* Python 3.6+
+  This is the base language fixtures is written in and for.
 
-.. figure::  /docs/pictures/yasa_logo.png
-   :align:   center
+* pbr
+  Used for version and release management of fixtures.
 
-**YASA** (*Yet Another Spindle Algorithm*) is a command-line sleep analysis toolbox in Python. The main functions of YASA are:
+* testtools <https://launchpad.net/testtools> 0.9.22 or newer.
+  testtools provides helpful glue functions for the details API used to report
+  information about a fixture (whether its used in a testing or production
+  environment).
 
-* Automatic sleep staging of polysomnography data (see `preprint article <https://doi.org/10.1101/2021.05.28.446165>`_).
-* Event detection: sleep spindles, slow-waves and rapid eye movements, on single or multi-channel EEG data.
-* Artefact rejection, on single or multi-channel EEG data.
-* Spectral analyses: bandpower, phase-amplitude coupling, 1/f slope, and more!
-* Hypnogram analysis: sleep statistics and stage tranisitions.
+For use in a unit test suite using the included glue, one of:
 
-For more details, check out the `API documentation <https://raphaelvallat.com/yasa/build/html/index.html>`_, try the
-`tutorial (Jupyter notebooks) <https://github.com/raphaelvallat/yasa/tree/master/notebooks>`_ or read the `FAQ <https://raphaelvallat.com/yasa/build/html/faq.html>`_.
+* bzrlib.tests
 
-----------------
+* Or any other test environment that supports TestCase.addCleanup.
 
-Installation
-~~~~~~~~~~~~
+Writing your own glue code is easy, or you can simply use Fixtures directly
+without any support code.
 
-To install YASA, simply open a terminal or Anaconda command prompt and enter:
+To run the test suite for fixtures, testtools is needed.
 
-.. code-block:: shell
+Why Fixtures
+============
 
-  pip install --upgrade yasa
+Standard Python unittest.py provides no obvious method for making and reusing
+state needed in a test case other than by adding a method on the test class.
+This scales poorly - complex helper functions propagating up a test class
+hierarchy is a regular pattern when this is done. Mocking while a great tool
+doesn't itself prevent this (and helpers to mock complex things can accumulate
+in the same way if placed on the test class).
 
-**What are the prerequisites for using YASA?**
+By defining a uniform contract where helpers have no dependency on the test
+class we permit all the regular code hygiene activities to take place without
+the distorting influence of being in a class hierarchy that is modelling an
+entirely different thing - which is what helpers on a TestCase suffer from.
 
-To use YASA, all you need is:
+About Fixtures
+==============
 
-- Some basic knowledge of Python, especially the `NumPy <https://docs.scipy.org/doc/numpy/user/quickstart.html>`_, `Pandas <https://pandas.pydata.org/pandas-docs/stable/getting_started/10min.html>`_ and `MNE <https://martinos.org/mne/stable/index.html>`_ packages.
-- A Python editor: YASA works best with `Jupyter Lab <https://jupyterlab.readthedocs.io/en/stable/index.html>`_, a web-based interactive user interface.
-- Some sleep EEG data and optionally a sleep staging file (hypnogram).
+A Fixture represents some state. Each fixture has attributes on it that are
+specific to the fixture. For instance, a fixture representing a directory that
+can be used for temporary files might have a attribute 'path'.
 
-**I have sleep data in European Data Format (.edf), how do I load the data in Python?**
+Most fixtures have complete ``pydoc`` documentation, so be sure to check
+``pydoc fixtures`` for usage information.
 
-If you have sleep EEG data in standard formats (e.g. EDF or BrainVision), you can use the `MNE package <https://mne.tools/stable/index.html>`_ to load and preprocess your data in Python. A simple preprocessing pipeline using MNE is shown below:
+Creating Fixtures
+=================
 
-.. code-block:: python
+Minimally, subclass Fixture, define _setUp to initialize your state and schedule
+a cleanup for when cleanUp is called and you're done::
 
-  import mne
-  # Load the EDF file
-  raw = mne.io.read_raw_edf('MYEDFFILE.edf', preload=True)
-  # Downsample the data to 100 Hz
-  raw.resample(100)
-  # Apply a bandpass filter from 0.1 to 40 Hz
-  raw.filter(0.1, 40)
-  # Select a subset of EEG channels
-  raw.pick_channels(['C4-A1', 'C3-A2'])
+  >>> import unittest
+  >>> import fixtures
+  >>> class NoddyFixture(fixtures.Fixture):
+  ...     def _setUp(self):
+  ...         self.frobnozzle = 42
+  ...         self.addCleanup(delattr, self, 'frobnozzle')
 
-How do I get started with YASA?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This will initialize frobnozzle when ``setUp`` is called, and when ``cleanUp``
+is called get rid of the frobnozzle attribute. Prior to version 1.3.0 fixtures
+recommended overriding ``setUp``. This is still supported, but since it is
+harder to write leak-free fixtures in this fashion, it is not recommended.
 
-If you want to dive right in, you can simply go to the main `documentation <https://raphaelvallat.com/yasa/build/html/api.html>`_ and try to apply YASA's functions on your own EEG data.
-However, for most users, we strongly recommend that you first try running the examples Jupyter notebooks to get a sense of how YASA works and what it can do!
-The notebooks also come with example datasets so they should work right out of the box as long as you've installed YASA first.
-The notebooks and datasets can be found on `GitHub <https://github.com/raphaelvallat/yasa/tree/master/notebooks>`_ (make sure that you download the whole *notebooks/* folder). A short description of all notebooks is provided below:
+If your fixture has diagnostic data - for instance the log file of an
+application server, or log messages, it can expose that by creating a content
+object (``testtools.content.Content``) and calling ``addDetail``.
 
-**Automatic sleep staging**
+  >>> from testtools.content import text_content
+  >>> class WithLog(fixtures.Fixture):
+  ...     def _setUp(self):
+  ...         self.addDetail('message', text_content('foo bar baz'))
 
-* `automatic_staging <notebooks/14_automatic_sleep_staging.ipynb>`_: Automatic sleep staging of polysomnography data.
+The method ``useFixture`` will use another fixture, call ``setUp`` on it, call
+``self.addCleanup(thefixture.cleanUp)``, attach any details from it and return
+the fixture. This allows simple composition of different fixtures.
 
-**Event detection**
+  >>> class ReusingFixture(fixtures.Fixture):
+  ...     def _setUp(self):
+  ...         self.noddy = self.useFixture(NoddyFixture())
 
-* `spindles_detection <notebooks/01_spindles_detection.ipynb>`_: single-channel spindles detection and step-by-step description of the spindles detection algorithm.
-* `spindles_detection_multi <notebooks/02_spindles_detection_multi.ipynb>`_: multi-channel spindles detection.
-* `spindles_detection_NREM_only <notebooks/03_spindles_detection_NREM_only.ipynb>`_: how to limit the spindles detection on specific sleep stages using an hypnogram.
-* `spindles_slow_fast <notebooks/04_spindles_slow_fast.ipynb>`_: slow versus fast spindles.
-* `sw_detection <notebooks/05_sw_detection.ipynb>`_: single-channel slow-waves detection and step-by-step description of the slow-waves detection algorithm.
-* `sw_detection_multi <notebooks/06_sw_detection_multi.ipynb>`_: multi-channel slow-waves detection.
-* `artifact_rejection <notebooks/13_artifact_rejection.ipynb>`_: automatic artifact rejection on single and multi-channel EEG data.
-* `REMs_detection <notebooks/07_REMs_detection.ipynb>`_: REMs detection.
-* `run_visbrain <notebooks/run_visbrain.py>`_: interactive display of the detected spindles using the Visbrain visualization software in Python.
+There is a helper for adapting a function or function pair into Fixtures. it
+puts the result of the function in fn_result::
 
-**Spectral analysis**
+  >>> import os.path
+  >>> import shutil
+  >>> import tempfile
+  >>> def setup_function():
+  ...     return tempfile.mkdtemp()
+  >>> def teardown_function(fixture):
+  ...     shutil.rmtree(fixture)
+  >>> fixture = fixtures.FunctionFixture(setup_function, teardown_function)
+  >>> fixture.setUp()
+  >>> print (os.path.isdir(fixture.fn_result))
+  True
+  >>> fixture.cleanUp()
 
-* `bandpower <notebooks/08_bandpower.ipynb>`_: calculate spectral band power, optionally averaged across channels and sleep stages.
-* `IRASA <notebooks/09_IRASA.ipynb>`_: separate the aperiodic (= fractal = 1/f) components of the EEG power spectrum using the IRASA method.
-* `spectrogram <notebooks/10_spectrogram.ipynb>`_: plot a multi-taper full-night spectrogram on single-channel EEG data with the hypnogram on top.
-* `nonlinear_features <notebooks/11_nonlinear_features.ipynb>`_: calculate non-linear EEG features on 30-seconds epochs and perform a naive sleep stage classification.
-* `SO-sigma_coupling <notebooks/12_SO-sigma_coupling.ipynb>`_: slow-oscillations/spindles phase-amplitude coupling and data-driven comodulogram.
-* `topoplot <notebooks/15_topoplot.ipynb>`_: topoplot.
+This can be expressed even more pithily:
 
-Gallery
-~~~~~~~
+  >>> fixture = fixtures.FunctionFixture(tempfile.mkdtemp, shutil.rmtree)
+  >>> fixture.setUp()
+  >>> print (os.path.isdir(fixture.fn_result))
+  True
+  >>> fixture.cleanUp()
 
-Below some plots demonstrating the functionalities of YASA. To reproduce these, check out the `tutorial (Jupyter notebooks) <https://github.com/raphaelvallat/yasa/tree/master/notebooks>`_.
+Another variation is MethodFixture which is useful for adapting alternate
+fixture implementations to Fixture::
 
-.. figure::  /docs/pictures/gallery.png
-  :align:   center
+  >>> class MyServer:
+  ...    def start(self):
+  ...        pass
+  ...    def stop(self):
+  ...        pass
+  >>> server = MyServer()
+  >>> fixture = fixtures.MethodFixture(server, server.start, server.stop)
 
-  *The top plot show an overlay of the detected spindles on real EEG data. The middle left panel shows a time-frequency representation of the whole-night recording (spectrogram), plotted with the hypnogram (sleep stages) on top. The middle right panel shows the sleep stage probability transition matrix, calculated across the entire night. The bottom row shows, from left to right: a topographic plot, the average template of all detected slow-waves across the entire night stratified by channels, and a phase-amplitude coupling comodulogram.*
+You can also combine existing fixtures using ``CompoundFixture``::
 
-Development
-~~~~~~~~~~~
+  >>> noddy_with_log = fixtures.CompoundFixture([NoddyFixture(),
+  ...                                            WithLog()])
+  >>> with noddy_with_log as x:
+  ...     print (x.fixtures[0].frobnozzle)
+  42
 
-YASA was created and is maintained by `Raphael Vallat <https://raphaelvallat.com>`_, a postdoctoral researcher in `Matthew Walker's lab <https://www.humansleepscience.com/>`_ at UC Berkeley. Contributions are more than welcome so feel free to contact me, open an issue or submit a pull request!
+The Fixture API
+===============
 
-To see the code or report a bug, please visit the `GitHub repository <https://github.com/raphaelvallat/yasa>`_.
+The example above introduces some of the Fixture API. In order to be able to
+clean up after a fixture has been used, all fixtures define a ``cleanUp``
+method which should be called when a fixture is finished with.
 
-Note that this program is provided with NO WARRANTY OF ANY KIND.
+Because it's nice to be able to build a particular set of related fixtures in
+advance of using them, fixtures also have a ``setUp`` method which should be
+called before trying to use them.
 
-Citation
-~~~~~~~~
+One common desire with fixtures that are expensive to create is to reuse them
+in many test cases; to support this the base Fixture also defines a ``reset``
+which calls ``self.cleanUp(); self.setUp()``. Fixtures that can more
+efficiently make themselves reusable should override this method. This can then
+be used with multiple test state via things like ``testresources``,
+``setUpClass``, or ``setUpModule``.
 
-To cite YASA, please use the `eLife publication <https://elifesciences.org/articles/70092>`_:
+When using a fixture with a test you can manually call the setUp and cleanUp
+methods. More convenient though is to use the included glue from
+``fixtures.TestWithFixtures`` which provides a mixin defining
+``useFixture`` (camel case because unittest is camel case throughout) method.
+It will call setUp on the fixture, call self.addCleanup(fixture) to schedule a
+cleanup, and return the fixture. This lets one write::
 
-* Vallat, Raphael, and Matthew P. Walker. "An open-source, high-performance tool for automated sleep staging." Elife 10 (2021). doi: https://doi.org/10.7554/eLife.70092
+  >>> import testtools
+  >>> import unittest
+
+Note that we use ``testtools.TestCase``. testtools has it's own implementation
+of ``useFixture`` so there is no need to use ``fixtures.TestWithFixtures`` with
+``testtools.TestCase``.
+
+  >>> class NoddyTest(testtools.TestCase, fixtures.TestWithFixtures):
+  ...     def test_example(self):
+  ...         fixture = self.useFixture(NoddyFixture())
+  ...         self.assertEqual(42, fixture.frobnozzle)
+  >>> result = unittest.TestResult()
+  >>> _ = NoddyTest('test_example').run(result)
+  >>> print (result.wasSuccessful())
+  True
+
+Fixtures implement the context protocol, so you can also use a fixture as a
+context manager::
+
+  >>> with fixtures.FunctionFixture(setup_function, teardown_function) as fixture:
+  ...    print (os.path.isdir(fixture.fn_result))
+  True
+
+When multiple cleanups error, fixture.cleanUp() will raise a wrapper exception
+rather than choosing an arbitrary single exception to raise::
+
+  >>> import sys
+  >>> from fixtures.fixture import MultipleExceptions
+  >>> class BrokenFixture(fixtures.Fixture):
+  ...     def _setUp(self):
+  ...         self.addCleanup(lambda:1/0)
+  ...         self.addCleanup(lambda:1/0)
+  >>> fixture = BrokenFixture()
+  >>> fixture.setUp()
+  >>> try:
+  ...    fixture.cleanUp()
+  ... except MultipleExceptions:
+  ...    exc_info = sys.exc_info()
+  >>> print (exc_info[1].args[0][0].__name__)
+  ZeroDivisionError
+
+Fixtures often expose diagnostic details that can be useful for tracking down
+issues. The ``getDetails`` method will return a dict of all the attached
+details, but can only be called before ``cleanUp`` is called. Each detail
+object is an instance of ``testtools.content.Content``.
+
+  >>> with WithLog() as l:
+  ...     print(l.getDetails()['message'].as_text())
+  foo bar baz
+
+Errors in setUp
++++++++++++++++
+
+The examples above used ``_setUp`` rather than ``setUp`` because the base
+class implementation of ``setUp`` acts to reduce the chance of leaking
+external resources if an error is raised from ``_setUp``. Specifically,
+``setUp`` contains a try:/except: block which catches all exceptions, captures
+any registered detail objects, and calls ``self.cleanUp`` before propagating
+the error. As long as you take care to register any cleanups before calling
+the code that may fail, this will cause them to be cleaned up. The captured
+detail objects are provided to the args of the raised exception.
+
+If the error that occurred was a subclass of ``Exception`` then ``setUp`` will
+raise ``MultipleExceptions`` with the last element being a ``SetupError`` that
+contains the detail objects. Otherwise, to prevent causing normally
+uncatchable errors like KeyboardInterrupt being caught inappropriately in the
+calling layer, the original exception will be raised as-is and no diagnostic
+data other than that from the original exception will be available.
+
+Shared Dependencies
++++++++++++++++++++
+
+A common use case within complex environments is having some fixtures shared by
+other ones.
+
+Consider the case of testing using a ``TempDir`` with two fixtures built on top
+of it; say a small database and a web server. Writing either one is nearly
+trivial. However handling ``reset()`` correctly is hard: both the database and
+web server would reasonably expect to be able to discard operating system
+resources they may have open within the temporary directory before its removed.
+A recursive ``reset()`` implementation would work for one, but not both.
+Calling ``reset()`` on the ``TempDir`` instance between each test is probably
+desirable but we don't want to have to do a complete ``cleanUp`` of the higher
+layer fixtures (which would make the ``TempDir`` be unused and trivially
+resettable. We have a few options available to us.
+
+Imagine that the webserver does not depend on the DB fixture in any way - we
+just want the webserver and DB fixture to coexist in the same tempdir.
+
+A simple option is to just provide an explicit dependency fixture for the
+higher layer fixtures to use.  This pushes complexity out of the core and onto
+users of fixtures::
+
+  >>> class WithDep(fixtures.Fixture):
+  ...     def __init__(self, tempdir, dependency_fixture):
+  ...         super(WithDep, self).__init__()
+  ...         self.tempdir = tempdir
+  ...         self.dependency_fixture = dependency_fixture
+  ...     def setUp(self):
+  ...         super(WithDep, self).setUp()
+  ...         self.addCleanup(self.dependency_fixture.cleanUp)
+  ...         self.dependency_fixture.setUp()
+  ...         # we assume that at this point self.tempdir is usable.
+  >>> DB = WithDep
+  >>> WebServer = WithDep
+  >>> tempdir = fixtures.TempDir()
+  >>> db = DB(tempdir, tempdir)
+  >>> server = WebServer(tempdir, db)
+  >>> server.setUp()
+  >>> server.cleanUp()
+
+Another option is to write the fixtures to gracefully handle a dependency
+being reset underneath them. This is insufficient if the fixtures would
+block the dependency resetting (for instance by holding file locks open
+in a tempdir - on Windows this will prevent the directory being deleted).
+
+Another approach which ``fixtures`` neither helps nor hinders is to raise
+a signal of some sort for each user of a fixture before it is reset. In the
+example here, ``TempDir`` might offer a subscribers attribute that both the
+DB and web server would be registered in. Calling ``reset`` or ``cleanUp``
+on the tempdir would trigger a callback to all the subscribers; the DB and
+web server reset methods would look something like:
+
+  >>> def reset(self):
+  ...     if not self._cleaned:
+  ...         self._clean()
+
+(Their action on the callback from the tempdir would be to do whatever work
+was needed and set ``self._cleaned``.) This approach has the (perhaps)
+surprising effect that resetting the webserver may reset the DB - if the
+webserver were to be depending on ``tempdir.reset`` as a way to reset the
+webservers state.
+
+Another approach which is not currently implemented is to provide an object
+graph of dependencies and a reset mechanism that can traverse that, along with
+a separation between 'reset starting' and 'reset finishing' - the DB and
+webserver would both have their ``reset_starting`` methods called, then the
+tempdir would be reset, and finally the DB and webserver would have
+``reset_finishing`` called.
+
+Stock Fixtures
+==============
+
+In addition to the Fixture, FunctionFixture and MethodFixture classes fixtures
+includes a number of precanned fixtures. The API docs for fixtures will list
+the complete set of these, should the dcs be out of date or not to hand. For
+the complete feature set of each fixture please see the API docs.
+
+ByteStream
+++++++++++
+
+Trivial adapter to make a BytesIO (though it may in future auto-spill to disk
+for large content) and expose that as a detail object, for automatic inclusion
+in test failure descriptions. Very useful in combination with MonkeyPatch.
+
+  >>> fixture = fixtures.StringStream('my-content')
+  >>> fixture.setUp()
+  >>> with fixtures.MonkeyPatch('sys.something', fixture.stream):
+  ...     pass
+  >>> fixture.cleanUp()
+
+EnvironmentVariable
++++++++++++++++++++
+
+Isolate your code from environmental variables, delete them or set them to a
+new value.
+
+  >>> fixture = fixtures.EnvironmentVariable('HOME')
+
+FakeLogger
+++++++++++
+
+Isolate your code from an external logging configuration - so that your test
+gets the output from logged messages, but they don't go to e.g. the console.
+
+  >>> fixture = fixtures.FakeLogger()
+
+FakePopen
++++++++++
+
+Pretend to run an external command rather than needing it to be present to run
+tests.
+
+  >>> from io import BytesIO
+  >>> fixture = fixtures.FakePopen(lambda _:{'stdout': BytesIO('foobar')})
+
+MockPatchObject
++++++++++++++++
+
+Adapts ``mock.patch.object`` to be used as a Fixture.
+
+  >>> class Fred:
+  ...     value = 1
+  >>> fixture = fixtures.MockPatchObject(Fred, 'value', 2)
+  >>> with fixture:
+  ...     Fred().value
+  2
+  >>> Fred().value
+  1
+
+MockPatch
++++++++++
+
+Adapts ``mock.patch`` to be used as a Fixture.
+
+  >>> fixture = fixtures.MockPatch('subprocess.Popen.returncode', 3)
+
+MockPatchMultiple
++++++++++++++++++
+
+Adapts ``mock.patch.multiple`` to be used as a Fixture.
+
+  >>> fixture = fixtures.MockPatchMultiple('subprocess.Popen', returncode=3)
+
+MonkeyPatch
++++++++++++
+
+Control the value of a named Python attribute.
+
+  >>> def fake_open(path, mode):
+  ...     pass
+  >>> fixture = fixtures.MonkeyPatch('__builtin__.open', fake_open)
+
+Note that there are some complexities when patching methods - please see the
+API documentation for details.
+
+NestedTempfile
+++++++++++++++
+
+Change the default directory that the tempfile module places temporary files
+and directories in. This can be useful for containing the noise created by
+code which doesn't clean up its temporary files. This does not affect
+temporary file creation where an explicit containing directory was provided.
+
+  >>> fixture = fixtures.NestedTempfile()
+
+PackagePathEntry
+++++++++++++++++
+
+Adds a single directory to the path for an existing Python package. This adds
+to the package.__path__ list. If the directory is already in the path, nothing
+happens, if it isn't then it is added on setUp and removed on cleanUp.
+
+  >>> fixture = fixtures.PackagePathEntry('package/name', '/foo/bar')
+
+PythonPackage
++++++++++++++
+
+Creates a python package directory. Particularly useful for testing code that
+dynamically loads packages/modules, or for mocking out the command line entry
+points to Python programs.
+
+  >>> fixture = fixtures.PythonPackage('foo.bar', [('quux.py', '')])
+
+PythonPathEntry
++++++++++++++++
+
+Adds a single directory to sys.path. If the directory is already in the path,
+nothing happens, if it isn't then it is added on setUp and removed on cleanUp.
+
+  >>> fixture = fixtures.PythonPathEntry('/foo/bar')
+
+StringStream
+++++++++++++
+
+Trivial adapter to make a StringIO (though it may in future auto-spill to disk
+for large content) and expose that as a detail object, for automatic inclusion
+in test failure descriptions. Very useful in combination with MonkeyPatch.
+
+  >>> fixture = fixtures.StringStream('stdout')
+  >>> fixture.setUp()
+  >>> with fixtures.MonkeyPatch('sys.stdout', fixture.stream):
+  ...     pass
+  >>> fixture.cleanUp()
+
+TempDir
++++++++
+
+Create a temporary directory and clean it up later.
+
+  >>> fixture = fixtures.TempDir()
+
+The created directory is stored in the ``path`` attribute of the fixture after
+setUp.
+
+TempHomeDir
++++++++++++
+
+Create a temporary directory and set it as $HOME in the environment.
+
+  >>> fixture = fixtures.TempHomeDir()
+
+The created directory is stored in the ``path`` attribute of the fixture after
+setUp.
+
+The environment will now have $HOME set to the same path, and the value
+will be returned to its previous value after tearDown.
+
+Timeout
++++++++
+
+Aborts if the covered code takes more than a specified number of whole wall-clock
+seconds.
+
+There are two possibilities, controlled by the 'gentle' argument: when gentle,
+an exception will be raised and the test (or other covered code) will fail.
+When not gentle, the entire process will be terminated, which is less clean,
+but more likely to break hangs where no Python code is running.
+
+*Caution:* Only one timeout can be active at any time across all threads in a
+single process.  Using more than one has undefined results.  (This could be
+improved by chaining alarms.)
+
+*Note:* Currently supported only on Unix because it relies on the ``alarm``
+system call.
+
+Contributing
+============
+
+Fixtures has its project homepage on GitHub
+<https://github.com/testing-cabal/fixtures>.
