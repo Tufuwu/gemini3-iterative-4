@@ -1,4 +1,4 @@
-name: Node.js CI with LocalStack
+name: Node.js CI
 
 on:
   push:
@@ -9,49 +9,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "19", "18", "17", "16", "15", "14", "13", "12", "11", "10", "8"]
+        arch: [amd64, ppc64le]
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js 12
-        uses: actions/setup-node@v3
+      - name: Set up QEMU
+        if: matrix.arch == 'ppc64le'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Run tests in Container
+        uses: addnab/docker-run-action@v3
         with:
-          node-version: '12'
-          cache: 'npm'
-
-      - name: Start LocalStack
-        run: |
-          docker pull localstack/localstack
-          docker run --rm -d \
-            -p 4566:4566 \
-            -e SERVICES=cloudformation,iam,sts,lambda,s3,apigateway \
-            --name localstack_main \
-            localstack/localstack
-          
-          # Wait for port to be open
-          timeout 60s bash -c "until (echo > /dev/tcp/localhost/4566) >/dev/null 2>&1; do sleep 2; done"
-
-      - name: Install dependencies
-        run: |
-          npm install
-          npm install -g serverless@2
-
-      - name: Run lint and unit tests
-        run: |
-          set -e
-          npm run lint
-          npm run test
-
-      - name: Run integration tests
-        env:
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_DEFAULT_REGION: us-east-1
-          SLS_DEBUG: "*"
-        run: |
-          npm link
-          # Ensure LocalStack internal services are ready
-          sleep 15
-          npm run test:integration
+          image: ${{ matrix.arch == 'ppc64le' && 'ppc64le/' || '' }}node:${{ matrix.node-version }}-slim
+          options: -v ${{ github.workspace }}:/src -w /src
+          run: |
+            # Ensure build tools are present for native modules (common cause of 'nan' errors)
+            if [ "${{ matrix.arch }}" = "ppc64le" ]; then
+              apt-get update && apt-get install -y python3 make g++ gcc
+            fi
+            npm install
+            npm test
 

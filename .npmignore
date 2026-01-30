@@ -1,5 +1,6 @@
-.babelrc
-.gitignore
-.travis.yml
-bin/rename
-doc/
+test
+perf
+coverage
+.*
+
+
