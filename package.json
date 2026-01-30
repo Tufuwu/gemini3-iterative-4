@@ -1,51 +1,75 @@
 {
-  "name": "inline-css",
-  "version": "3.0.0",
-  "description": "Inline css into an html file.",
+  "name": "sails-hook-sequelize",
+  "version": "1.2.2",
+  "description": "Sails.js hook to use sequelize ORM",
   "main": "index.js",
-  "workspaces": ["./packages/*"],
-  "dependencies": {
-    "cheerio": "^1.0.0-rc.10",
-    "css-rules": "^1.1.0",
-    "extract-css": "^2.0.1",
-    "flat-util": "^1.1.8",
-    "pick-util": "^1.1.4",
-    "slick": "^1.12.2",
-    "specificity": "^0.4.1"
-  },
-  "devDependencies": {
-    "babel-eslint": "^10.1.0",
-    "coveralls": "^3.1.1",
-    "eslint": "^7.32.0",
-    "js-beautify": "^1.14.4",
-    "lerna": "^4.0.0",
-    "mocha": "^9.1.4",
-    "nyc": "^15.1.0",
-    "should": "^13.2.3",
-    "vinyl": "^2.2.1"
-  },
-  "engines": {
-    "node": ">=8"
+  "sails": {
+    "isHook": true
   },
   "scripts": {
-    "bootstrap": "lerna bootstrap",
-    "test": "mocha test packages/**/test",
-    "lint": "eslint index.js lib/ packages/",
-    "lint:fix": "eslint --fix index.js lib/ packages/",
-    "coverage": "nyc npm test && nyc report",
-    "coveralls": "nyc npm test && nyc report --reporter=lcov"
+    "lint": "node ./node_modules/.bin/eslint index.js test/*.js test/unit/*.js",
+    "lint:fix": "node ./node_modules/.bin/eslint --fix index.js test/*.js test/unit/*.js",
+    "test": "NODE_ENV=test nyc ./node_modules/mocha/bin/mocha --exit test/overall.test.js",
+    "cover": "nyc report",
+    "pretest": "cd ./test/fixtures/v0.11-app && npm i --prefix ./ && cd - && cd ./test/fixtures/v0.12-app && npm i --prefix ./ && cd -",
+    "posttest": "git checkout -- test/fixtures/v1.x-sqlite3-app/db/sequelize.sqlite && git checkout -- test/fixtures/v1.x-sequelize-waterline-app/db/sequelize.sqlite"
   },
-  "files": [
-    "index.js",
-    "lib/"
-  ],
-  "repository": "jonkemp/inline-css",
+  "nyc": {
+    "include": [
+      "index.js"
+    ],
+    "report-dir": "./coverage",
+    "temp-dir": "./coverage",
+    "reporter": [
+      "lcov",
+      "text-summary",
+      "html"
+    ]
+  },
   "keywords": [
-    "inline",
-    "css",
-    "html",
-    "email"
+    "sails",
+    "sequelize",
+    "orm"
   ],
-  "author": "Jonathan Kemp <kempdogg@gmail.com> (http://jonkemp.com/)",
-  "license": "MIT"
+  "author": "Gergely Munkacsy",
+  "contributors": [
+    "Konstantin Burkalev",
+    "Dmitry Demenchuk",
+    "Damien Marble",
+    "Abel M. Osorio"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "coveralls": "^3.1.0",
+    "decache": "^4.6.0",
+    "eslint": "^7.1.0",
+    "istanbul": "^0.4.5",
+    "json3": "^3.3.3",
+    "minimatch": "^3.0.4",
+    "mocha": "^7.2.0",
+    "nyc": "^15.1.0",
+    "pg": "^8.2.1",
+    "pg-hstore": "^2.3.3",
+    "sails": "^1.2.4",
+    "sails-hook-orm": "^3.0.1",
+    "sails-memory": "^0.10.7",
+    "should": "^13.2.3",
+    "sqlite3": "^4.2.0",
+    "supertest": "^4.0.2"
+  },
+  "dependencies": {
+    "continuation-local-storage": "^3.2.1",
+    "sequelize": "^5.21.11"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:KSDaemon/sails-hook-sequelize.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KSDaemon/sails-hook-sequelize/issues"
+  },
+  "homepage": "https://github.com/KSDaemon/sails-hook-sequelize"
 }
