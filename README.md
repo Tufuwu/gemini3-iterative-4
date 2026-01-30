@@ -1,109 +1,151 @@
-lintspaces-cli
-==============
+# serve-index
 
-[![Coverage Status](https://coveralls.io/repos/github/evanshortiss/lintspaces-cli/badge.svg?branch=master)](https://coveralls.io/github/evanshortiss/lintspaces-cli?branch=master)
-[![npm version](https://badge.fury.io/js/lintspaces-cli.svg)](https://www.npmjs.com/package/lintspaces-cli)
-[![npm downloads](https://img.shields.io/npm/dm/lintspaces-cli.svg?style=flat)](https://www.npmjs.com/package/lintspaces-cli)
+[![NPM Version][npm-image]][npm-url]
+[![NPM Downloads][downloads-image]][downloads-url]
+[![Linux Build Status][ci-image]][ci-url]
+[![Windows Build][appveyor-image]][appveyor-url]
+[![Coverage Status][coveralls-image]][coveralls-url]
 
-
-Simple as pie CLI for the node-lintspaces module. Supports all the usual
-lintspaces args that the Grunt, Gulp and vanilla node.js module support.
+  Serves pages that contain directory listings for a given path.
 
 ## Install
-```
-$ npm install -g lintspaces-cli
-```
 
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/). Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
 
-## Help Output
-```
-$ lintspaces --help
-
-Usage: lintspaces [options]
-
-Options:
-  -V, --version                   output the version number
-  -n, --newline                   Require newline at end of file.
-  -g, --guessindentation          Tries to guess the indention of a line depending on previous lines.
-  -b, --skiptrailingonblank       Skip blank lines in trailingspaces check.
-  -it, --trailingspacestoignores  Ignore trailing spaces in ignores.
-  -l, --maxnewlines <n>           Specify max number of newlines between blocks.
-  -t, --trailingspaces            Tests for useless whitespaces (trailing whitespaces) at each line ending of all files.
-  -d, --indentation <s>           Check indentation is "tabs" or "spaces".
-  -s, --spaces <n>                Used in conjunction with -d to set number of spaces.
-  -i, --ignores <items>           Comma separated list of ignores built in ignores. (default: [])
-  -r, --regexignores <items>      Comma separated list of ignores that should be parsed as Regex (default: [])
-  -e, --editorconfig <s>          Use editorconfig specified at this file path for settings.
-  -o, --allowsBOM                 Sets the allowsBOM option to true
-  -v, --verbose                   Be verbose when processing files
-  -., --matchdotfiles             Match dotfiles
-  --endofline <s>                 Enables EOL checks. Supports "LF" or "CRLF" or "CR" values
-  --json                          Output the raw JSON results from lintspaces
-  -h, --help                      output usage information
+```sh
+$ npm install serve-index
 ```
 
-## Example Commands
+## API
 
-Check all JavaScript files in directory for trailing spaces and newline at the
-end of file:
-
-```
-lintspaces -n -t ./*.js
+```js
+var serveIndex = require('serve-index')
 ```
 
-Check all js and css files
+### serveIndex(path, options)
 
+Returns middlware that serves an index of the directory in the given `path`.
+
+The `path` is based off the `req.url` value, so a `req.url` of `'/some/dir`
+with a `path` of `'public'` will look at `'public/some/dir'`. If you are using
+something like `express`, you can change the URL "base" with `app.use` (see
+the express example).
+
+#### Options
+
+Serve index accepts these properties in the options object.
+
+##### filter
+
+Apply this filter function to files. Defaults to `false`. The `filter` function
+is called for each file, with the signature `filter(filename, index, files, dir)`
+where `filename` is the name of the file, `index` is the array index, `files` is
+the array of files and `dir` is the absolute path the file is located (and thus,
+the directory the listing is for).
+
+##### hidden
+
+Display hidden (dot) files. Defaults to `false`.
+
+##### icons
+
+Display icons. Defaults to `false`.
+
+##### stylesheet
+
+Optional path to a CSS stylesheet. Defaults to a built-in stylesheet.
+
+##### template
+
+Optional path to an HTML template or a function that will render a HTML
+string. Defaults to a built-in template.
+
+When given a string, the string is used as a file path to load and then the
+following tokens are replaced in templates:
+
+  * `{directory}` with the name of the directory.
+  * `{files}` with the HTML of an unordered list of file links.
+  * `{linked-path}` with the HTML of a link to the directory.
+  * `{style}` with the specified stylesheet and embedded images.
+
+When given as a function, the function is called as `template(locals, callback)`
+and it needs to invoke `callback(error, htmlString)`. The following are the
+provided locals:
+
+  * `directory` is the directory being displayed (where `/` is the root).
+  * `displayIcons` is a Boolean for if icons should be rendered or not.
+  * `fileList` is a sorted array of files in the directory. The array contains
+    objects with the following properties:
+    - `name` is the relative name for the file.
+    - `stat` is a `fs.Stats` object for the file.
+  * `path` is the full filesystem path to `directory`.
+  * `style` is the default stylesheet or the contents of the `stylesheet` option.
+  * `viewName` is the view name provided by the `view` option.
+
+##### view
+
+Display mode. `tiles` and `details` are available. Defaults to `tiles`.
+
+## Examples
+
+### Serve directory indexes with vanilla node.js http server
+
+```js
+var finalhandler = require('finalhandler')
+var http = require('http')
+var serveIndex = require('serve-index')
+var serveStatic = require('serve-static')
+
+// Serve directory indexes for public/ftp folder (with icons)
+var index = serveIndex('public/ftp', {'icons': true})
+
+// Serve up public/ftp folder files
+var serve = serveStatic('public/ftp')
+
+// Create server
+var server = http.createServer(function onRequest(req, res){
+  var done = finalhandler(req, res)
+  serve(req, res, function onNext(err) {
+    if (err) return done(err)
+    index(req, res, done)
+  })
+})
+
+// Listen
+server.listen(3000)
 ```
-lintspaces -n -t src/**/*.js src/**/*.css
+
+### Serve directory indexes with express
+
+```js
+var express    = require('express')
+var serveIndex = require('serve-index')
+
+var app = express()
+
+// Serve URLs like /ftp/thing as public/ftp/thing
+// The express.static serves the file contents
+// The serveIndex is this module serving the directory
+app.use('/ftp', express.static('public/ftp'), serveIndex('public/ftp', {'icons': true}))
+
+// Listen
+app.listen(3000)
 ```
 
-Check that 2 spaces are used as indent:
+## License
 
-```
-lintspaces -nt -s 2 -d spaces ./*.js
-```
+[MIT](LICENSE). The [Silk](http://www.famfamfam.com/lab/icons/silk/) icons
+are created by/copyright of [FAMFAMFAM](http://www.famfamfam.com/).
 
-## Using Ignores
-lintspaces supports ignores, and we added support for those in version 0.3.0 of
-this module.
-
-Using built in ignores can be done like so:
-
-```
-lintspaces -i 'js-comments' -i 'c-comments'
-```
-
-To add Regex ignores a different flag is required:
-
-```
-lintspaces -r '/pointless|regex/g' -r '/and|another/gi '
-```
-
-## Changelog
-
-* 0.7.1 - Fix "is not a file" errors
-
-* 0.7.0 - Bump dependencies. Add `--json` output flag. Add tests. Normalise arguments to lowercase.
-
-* 0.6.0 - Added support for matching dotfiles (dzięki @jrencz)
-
-* 0.5.0 - Add support for glob patterns (thanks @jantimon)
-
-* 0.4.0 - Add verbose option (thank you @gemal)
-
-* 0.3.0 - Add support for Regex ignores by adding the *--regexIgnores* option.
-
-* 0.2.0 - Update to use lintspaces@0.5.0 and support new allowsBOM and
-endOfLine options.
-
-* 0.1.1 - Support for node.js v4+ (thank you @gurdiga)
-
-* 0.1.0 - Initial stable release
-
-* < 0.1.0 - Dark ages...
-
-## Contributors
-* [Vlad Gurdiga (@gurdiga)](https://github.com/gurdiga)
-* [Henrik Gemal (@gemal)](https://github.com/gemal)
-* [Jan Nicklas (@jantimon)](https://github.com/jantimon)
-* [Jarek Rencz (@jrencz)](https://github.com/jrencz)
+[appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/serve-index/master.svg?label=windows
+[appveyor-url]: https://ci.appveyor.com/project/dougwilson/serve-index
+[ci-image]: https://badgen.net/github/checks/expressjs/serve-index/master?label=ci
+[ci-url]: https://github.com/expressjs/serve-index/actions/workflows/ci.yml
+[coveralls-image]: https://img.shields.io/coveralls/expressjs/serve-index/master.svg
+[coveralls-url]: https://coveralls.io/r/expressjs/serve-index?branch=master
+[downloads-image]: https://img.shields.io/npm/dm/serve-index.svg
+[downloads-url]: https://npmjs.org/package/serve-index
+[npm-image]: https://img.shields.io/npm/v/serve-index.svg
+[npm-url]: https://npmjs.org/package/serve-index
