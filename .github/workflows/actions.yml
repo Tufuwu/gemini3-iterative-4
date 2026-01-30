@@ -1,38 +1,45 @@
-name: Node.js CI
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        node-version: [10.x, 12.x]
+        python-version: [3.8, 3.9]
+
+    env:
+      NUMPY_VERSION: stable
+      ASTROPY_VERSION: stable
+      SETUP_CMD: test
+      PIP_DEPENDENCIES: ''
+      CONDA_DEPENDENCIES: 'scipy pytest-cov'
+      CC_TEST_REPORTER_ID: 3b872f454e56a7bae149bd9ec6b24c83e6d5856ce08035a8c2e739e67c410d70
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          auto-update-conda: true
+          auto-activate-base: false
+          activate-environment: test
 
-    - run: npm install
-    - run: npm install nan
-    - run: npm test
+      - name: Install ci-helpers
+        shell: bash -el {0}
+        run: |
+          git clone https://github.com/astropy/ci-helpers.git
+          source ci-helpers/travis/setup_conda_linux.sh
 
-    - name: Coveralls
-      if: success()
-      run: |
-        npm install -g nyc coveralls
-        npx nyc report --reporter=text-lcov > lcov.info
-        cat lcov.info | coveralls
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_SERVICE_NAME: github
+      - name: Run tests
+        shell: bash -el {0}
+        run: py.test
 
