@@ -1,72 +1,72 @@
-# LyricsGenius
-# Copyright 2018 John W. Miller
-# See LICENSE for details.
-
-import sys
-import re
+from setuptools import setup, find_packages
 from os import path
-from setuptools import find_packages, setup
 
-assert sys.version_info[0] == 3, "LyricsGenius requires Python 3."
 
-VERSIONFILE = "lyricsgenius/__init__.py"
-ver_file = open(VERSIONFILE, "rt").read()
-VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-mo = re.search(VSRE, ver_file, re.M)
+here = path.abspath(path.dirname(__file__))
+about = {}
+with open(path.join(here, 'vakt', 'version.py'), mode='r', encoding='utf-8') as f:
+    exec(f.read(), about)
 
-if mo:
-    version = mo.group(1)
-else:
-    raise RuntimeError(
-        "Unable to find version string in {}".format(VERSIONFILE))
-
-this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-extras_require = {
-    'docs': [
-        'sphinx~=3.3',
-        'sphinx-rtd-theme',
-        'jinja2<3.1',
-    ],
-    'checks': [
-        'tox~=3.2',
-        'doc8',
-        'flake8',
-        'flake8-bugbear',
-        'pygments',
-    ]
-}
-extras_require['dev'] = (
-    extras_require['docs'] + extras_require['checks']
-)
 
-setup(
-    name='lyricsgenius',
-    version=version,
-    description='Download lyrics and metadata from Genius.com',
-    long_description=long_description,
-    long_description_content_type='text/markdown',
-    license="MIT",
-    author='John W. Miller',
-    author_email='john.w.millr+lg@gmail.com',
-    url='https://github.com/johnwmillr/lyricsgenius',
-    keywords='genius api genius-api music lyrics artists albums songs',
-    packages=find_packages(exclude=['tests']),
-    install_requires=[
-        'beautifulsoup4>=4.6.0',
-        'requests>=2.20.0'
-    ],
-    extras_require=extras_require,
-    entry_points={
-        'console_scripts': [
-            'lyricsgenius = lyricsgenius.__main__:main']
-    },
-    classifiers=[
-        'Topic :: Software Development :: Libraries',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-    ]
-)
+if __name__ == '__main__':
+    setup(
+        name='vakt',
+        description='Attribute-based access control (ABAC) SDK for Python',
+        keywords='ACL ABAC access-control policy security authorization permission',
+        version=about['__version__'],
+        author='Egor Kolotaev',
+        author_email='ekolotaev@gmail.com',
+        license="Apache 2.0 license",
+        url='http://github.com/kolotaev/vakt',
+        long_description=long_description,
+        long_description_content_type='text/markdown',
+        py_modules=['vakt'],
+        python_requires='>=3.6',
+        install_requires=[
+            'jsonpickle>=2.0',
+        ],
+        extras_require={
+            'dev': [
+                'pytest~=7.0',
+                'pytest-cov~=4.0',
+                'pylint~=2.13',
+                'PyMySQL~=1.0',
+                'psycopg2cffi~=2.8',
+            ],
+            'mongo': [
+                'pymongo~=4.1',
+            ],
+            'sql': [
+                'SQLAlchemy~=1.4',
+            ],
+            'redis': [
+                'redis~=4.3'
+            ],
+        },
+        packages=find_packages(exclude='tests'),
+        classifiers=[
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: Apache Software License',
+            'Operating System :: OS Independent',
+            'Topic :: System :: Systems Administration',
+            'Topic :: System :: Networking',
+            'Topic :: System :: Networking :: Firewalls',
+            'Topic :: Security',
+            'Topic :: Software Development',
+            'Topic :: Utilities',
+            'Natural Language :: English',
+            'Programming Language :: Python',
+            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: Implementation :: CPython',
+            'Programming Language :: Python :: Implementation :: PyPy',
+        ],
+    )
